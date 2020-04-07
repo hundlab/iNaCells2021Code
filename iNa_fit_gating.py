@@ -6,7 +6,8 @@ Created on Fri Feb 14 10:20:18 2020
 @author: grat05
 """
 
-from iNa_models import Koval_ina, OHaraRudy_INa
+#from iNa_models import Koval_ina, OHaraRudy_INa
+from iNa_models_ode import OHaraRudy_INa
 from scripts import load_data_parameters, load_all_data, all_data
 import iNa_fit_functions
 from iNa_fit_functions import normalize2prepulse, setup_sim, run_sim, \
@@ -22,7 +23,15 @@ import copy
 from multiprocessing import Pool
 import pickle
 import datetime
+from sklearn.preprocessing import minmax_scale
+from scipy import integrate
 
+
+#import sys
+#sys.path.append('./models/build/Debug/')
+#import models
+
+np.seterr(all='ignore')
 
 iNa_fit_functions.plot1 = False #sim
 iNa_fit_functions.plot2 = False #diff
@@ -31,12 +40,10 @@ iNa_fit_functions.plot3 = False #tau
 #ina_fits = h5py.File('ina_fits.h5','w')
 
 
-run_fits = {'Recovery':     False,\
-            'Activation':   False,\
-            'Inactivation': False,
-            'TauInact':     False,
-            'Group':        True,
-            'Tau Act':         False
+run_fits = {'Activation':   True,\
+            'Inactivation': True,\
+            'Recovery':     True,\
+            'Tau Act':      False
             }
 
 try: fit_results
@@ -47,7 +54,8 @@ try: fit_params
 except NameError: fit_params = {}
 
 
-model = OHaraRudy_INa
+model = OHaraRudy_INa#models.iNa.OharaRudy_INa#OHaraRudy_INa
+retOptions  = model().retOptions
 dt = 0.05
 monoExp_params = [-1,1,0]
 biExp_params = np.array([-1,1,-1,1000,0])
@@ -55,13 +63,64 @@ biExp_params = np.array([-1,1,-1,1000,0])
 useJoint = True
 
 
-exp_parameters, data = load_data_parameters('iNa_dims.xlsx','gating', data=all_data)
+exp_parameters_gating, data_gating = load_data_parameters('/params old/iNa_old.xlsx','gating', data=all_data)
+exp_parameters_iv, data_iv = load_data_parameters('/params old/iNa_old.xlsx','iv_curve', data=all_data)
+
+exp_parameters = exp_parameters_gating.append(exp_parameters_iv, sort=False)
+data_gating.update(data_iv)
+data = data_gating
 
 #tau inact
 #partial(calcExpTauInact,func=monoExp,x0=np.ones(3))
 # [-1,1,-1,1000,0]
 # [-1,1,0]
 # bounds=[(0, np.inf)]*len(sub_mps)
+
+def resort(model_parameters, sim_f):
+    vals = sim_f(model_parameters)
+    return vals.flatten('F')
+
+def print_fun(x, f, accepted):
+    print("Minimum found:", bool(accepted), ", Cost:", f)
+    print("At:", x)
+
+def save_results(x, f, accepted, results=None):
+    print("Minimum found:", bool(accepted), ", Cost:", f)
+    print("At:", x)
+    if not results is None:
+        results.append((x,f))
+
+#called after, doesn't work
+def check_bounds(f_new, x_new, f_old, x_old, bounds=None, **kwargs):
+    print("---")
+    print(f_new, x_new, f_old, x_old)
+    print("---")
+    if bounds is None:
+        return True
+    else:
+        aboveMin = bool(np.all(x_new > bounds[:,0]))
+        belowMax = bool(np.all(x_new < bounds[:,1]))
+        print("---")
+        print(x_new, aboveMin and belowMax)
+        print("---")
+        return aboveMin and belowMax
+
+def lstsq_wrap(fun, x0, bounds=None, **kwargs):
+    if bounds is None:
+        bounds = (-np.inf,np.inf)
+    else:
+        #it had best be convertable to a numpy array
+        bounds = np.array(bounds).T
+    options = None
+    if 'ssq' in kwargs:
+        options = {'ssq': kwargs['ssq']}
+    try:
+        res = optimize.least_squares(fun, x0, bounds=bounds, kwargs=options)
+        res.resid = res.fun
+        res.fun = res.cost
+        return res
+    except ValueError:
+        return optimize.OptimizeResult(x=x0, success=False, status=-1, fun=np.inf)
 
 
 def normalizeToBaseline(model_params, sim_f):
@@ -83,9 +142,12 @@ def normalizeToFirst(model_params, sim_f):
     out = sim_f(model_params)
     return out/out[0]
 
-def setupSimExp(sim_fs, datas, data, exp_parameters, keys_iin, model, process, dt, post_process=None, setup_sim_args={}):
+def setupSimExp(sim_fs, datas, data, exp_parameters, keys_iin, model, process,\
+                dt, post_process=None, process_data=None, setup_sim_args={}):
     for key in keys_iin:
         key_data = data[key]
+        if not process_data is None:
+            key_data = process_data(key_data)
         key_exp_p = exp_parameters.loc[key]
         voltages, durs, sim_f = setup_sim(model, key_data, key_exp_p, process, dt=dt, **setup_sim_args)
         if not post_process is None:
@@ -96,50 +158,48 @@ def setupSimExp(sim_fs, datas, data, exp_parameters, keys_iin, model, process, d
         sim_fs.append(sim_fw)
         datas.append(key_data)
 
-#get group optimization first
-if run_fits['Group']:
-    sim_fs = []
-    datas = []
-    keys_all = []
+def minMaxNorm(model_params, sim_f, feature_range=(0, 1)):
+    return minmax_scale(sim_f(model_params))
 
-    model_params = np.ones(model.num_params)
-    mp_locs = np.arange(model.num_params)
-    sub_mps = model_params[mp_locs]
+def minMaxNorm_data(data, feature_range=(0, 1)):
+    data = np.copy(data)
+    minmax_scale(data[:,1], copy=False)
+    return data
 
-    # inactivation normalized to no prepulse
-    keys_iin = [('7971163_4', 'Dataset 32ms'), ('7971163_4', 'Dataset 64ms'),\
-                ('7971163_4', 'Dataset 128ms'), ('7971163_4', 'Dataset 256ms'),\
-                ('7971163_4', 'Dataset 512ms'),\
-                ('8928874_8',	'Dataset C fresh'), ('8928874_8',	'Dataset C day 1'),\
-                ('8928874_8',	'Dataset C day 3'), ('8928874_8',	'Dataset C day 5')]
-    keys_all += keys_iin
+def minNorm(model_params, sim_f):
+    sim_res = sim_f(model_params)
+    return sim_res/np.abs(np.min(sim_res))
 
-    setupSimExp(sim_fs=sim_fs,\
-                datas=datas,\
-                data=data,\
-                exp_parameters=exp_parameters,\
-                keys_iin=keys_iin,\
-                model=model,\
-                process=partial(normalized2val, durn=3),\
-                dt=dt,\
-                post_process=normalizeToBaseline)
+def minNorm_data(data):
+    data = np.copy(data)
+    data[:,1] = data[:,1]/np.abs(np.min(data[:,1]))
+    return data
 
-    # inactivation normalized to first
-    keys_iin = [('7971163_5',	'Dataset A -65'), ('7971163_5',	'Dataset A -75'),\
-                ('7971163_5',	'Dataset A -85'), ('7971163_5',	'Dataset A -95'),\
-                ('7971163_5',	'Dataset A -105'),\
-                ('21647304_3',	'Dataset B Adults'), ('21647304_3',	'Dataset B Pediatrics')]
-    keys_all += keys_iin
 
-    setupSimExp(sim_fs=sim_fs,\
-                datas=datas,\
-                data=data,\
-                exp_parameters=exp_parameters,\
-                keys_iin=keys_iin,\
-                model=model,\
-                process=partial(peakCurr, durn=3),\
-                dt=dt,\
-                post_process=normalizeToFirst)
+#fits_results_joint = pickle.load(open('./fits_res_joint_ohara_0306.pkl','rb'))
+#res = fits_results_joint['group']
+
+
+sim_fs = []
+datas = []
+keys_all = []
+
+solver = partial(integrate.solve_ivp, method='BDF')
+
+model_params = np.zeros(model.num_params)#np.array([ 0.        ,  0.        ,  1.49431475, -1.84448536, -1.21581823,
+#        0.04750437,  0.09809738,  0.        ,  0.        ,  0.        ,
+#        0.        ,  0.        ,  0.        ,  0.        ,  0.        ,
+#        0.        ,  0.        ,  1.487     , -1.788     , -0.254     ,
+#       -3.423     ,  4.661     ,  0.        ,  0.        ,  0.        ,
+#        0.        ,  0.        ,  0.        ,  0.        ])#np.zeros(model().num_params)
+model_params[[2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21]] = [ 0.505, -0.533, -0.286 , 2.558 , 0.92 ,  0.333 ,14.476 , 2.169 , 1.876, -0.487
+ , 3.163 , 3.814 , 2.584 ,-0.772 ,-0.129 , 0.528, -0.868 , 0.319 ,-3.578 , 0.149]
+mp_locs = []
+
+
+
+if run_fits['Recovery']:
+    mp_locs += [7] + list(range(17,22))
 
     # I2/I1 Recovery
     keys_iin = [('1323431_8', 'Dataset A -140'), ('1323431_8',	'Dataset A -120'),\
@@ -157,7 +217,8 @@ if run_fits['Group']:
                 model=model,\
                 process=normalize2prepulse,\
                 dt=dt,\
-                post_process=None)
+                post_process=None,
+                setup_sim_args={'sim_args':{'solver': solver}})
 
     # recovery normalized to preprepulse
     keys_iin = [\
@@ -178,15 +239,58 @@ if run_fits['Group']:
                 model=model,\
                 process=partial(normalize2prepulse, pulse1=1, pulse2=5),\
                 dt=dt,\
-                post_process=None)
+                post_process=None,
+                setup_sim_args={'sim_args':{'solver': solver}})
+
+
+
+if run_fits['Inactivation']:
+    mp_locs += list(range(7,17))
+
+    # inactivation normalized to no prepulse
+    keys_iin = [('7971163_4', 'Dataset 32ms'), ('7971163_4', 'Dataset 64ms'),\
+                ('7971163_4', 'Dataset 128ms'), ('7971163_4', 'Dataset 256ms'),\
+                ('7971163_4', 'Dataset 512ms'),\
+                ('8928874_8',	'Dataset C fresh'), ('8928874_8',	'Dataset C day 1'),\
+                ('8928874_8',	'Dataset C day 3'), ('8928874_8',	'Dataset C day 5')]#,
+#                ('21647304_3',	'Dataset B Adults'), ('21647304_3',	'Dataset B Pediatrics')]
+    keys_all += keys_iin
+
+    setupSimExp(sim_fs=sim_fs,\
+                datas=datas,\
+                data=data,\
+                exp_parameters=exp_parameters,\
+                keys_iin=keys_iin,\
+                model=model,\
+                process=partial(normalized2val, durn=3),\
+                dt=dt,\
+                post_process=normalizeToBaseline,
+                setup_sim_args={'sim_args':{'solver': solver}})
+
+    # inactivation normalized to first
+    keys_iin = [('7971163_5',	'Dataset A -65'), ('7971163_5',	'Dataset A -75'),\
+                ('7971163_5',	'Dataset A -85'), ('7971163_5',	'Dataset A -95'),\
+                ('7971163_5',	'Dataset A -105')]
+    keys_all += keys_iin
+
+    setupSimExp(sim_fs=sim_fs,\
+                datas=datas,\
+                data=data,\
+                exp_parameters=exp_parameters,\
+                keys_iin=keys_iin,\
+                model=model,\
+                process=partial(peakCurr, durn=3),\
+                dt=dt,\
+                post_process=normalizeToFirst,
+                setup_sim_args={'sim_args':{'solver': solver}})
 
     #tau inactivation
     keys_iin = [('8928874_8', 'Dataset E fresh'), ('8928874_8',	'Dataset E day 1'),\
-                ('8928874_8',	'Dataset E day 3'), ('8928874_8',	'Dataset E day 5'),\
-                ('1323431_5',	'Dataset B fast'),\
-                ('21647304_2', 'Dataset C Adults'), ('21647304_2', 'Dataset C Pediactric')]
+                ('8928874_8',	'Dataset E day 3'), ('8928874_8',	'Dataset E day 5')]#,\
+    #            ('1323431_5',	'Dataset B fast'),\
+    #            ('21647304_2', 'Dataset C Adults'), ('21647304_2', 'Dataset C Pediactric')]
     keys_all += keys_iin
-
+    
     setupSimExp(sim_fs=sim_fs,\
                 datas=datas,\
                 data=data,\
@@ -196,32 +300,90 @@ if run_fits['Group']:
                 process=partial(calcExpTauInact,func=biExp,x0=biExp_params,\
                       keep=1,calc_dur=1),\
                 dt=dt,\
-                post_process=None)
+                post_process=None,
+                setup_sim_args={'sim_args':{'solver': solver}})
 
-#    #tau inactivation normalized to first
-#    keys_iin = [('1323431_6',	'Dataset -80'), ('1323431_6',	'Dataset -100')]
-#    keys_all.add(keys_iin)
-#
-#    setupSimExp(sim_fs=sim_fs,\
-#                datas=datas,\
-#                data=data,\
-#                exp_parameters=exp_parameters,\
-#                keys_iin=keys_iin,\
-#                model=model,\
-#                process=partial(calcExpTauInact,func=biExp,x0=biExp_params,\
-#                          keep=1,calc_dur=3),\
-#                dt=dt,\
-#                post_process=normalizeToFirst)
+    # #tau inactivation normalized to first
+    # keys_iin = [('1323431_6',	'Dataset -80'), ('1323431_6',	'Dataset -100')]
+    # keys_all += keys_iin
+    
+    # setupSimExp(sim_fs=sim_fs,\
+    #             datas=datas,\
+    #             data=data,\
+    #             exp_parameters=exp_parameters,\
+    #             keys_iin=keys_iin,\
+    #             model=model,\
+    #             process=partial(calcExpTauInact,func=biExp,x0=biExp_params,\
+    #                       keep=1,calc_dur=3),\
+    #             dt=dt,\
+    #             post_process=None,#normalizeToFirst
+    #             setup_sim_args={'sim_args':{'solver': solver}})
 
 
 
-    # Activation normalized to driving force
-    keys_iin = [('1323431_2',	'Dataset'),('8928874_7',	'Dataset D fresh'),\
-                ('8928874_7',	'Dataset D day 1'),('8928874_7',	'Dataset D day 3'),\
-                ('8928874_7',	'Dataset D day 5'),\
+    #tau inactivation fast & slow
+    keys_iin = [('1323431_5',	'Dataset B fast'),('1323431_5',	'Dataset B slow'),\
+                ('21647304_2', 'Dataset C Adults'), ('21647304_2',	'Dataset D Adults'),\
+                ('21647304_2', 'Dataset C Pediactric'), ('21647304_2',	'Dataset D Pediactric')]
+    keys_all += keys_iin
+    process = partial(calcExpTauInact,func=biExp,x0=biExp_params,\
+                      keep=[1,3],calc_dur=1)
+    post_process = resort
+    setup_sim_args = {'sim_args':{'solver': solver}}
+    
+    for i in range(0,len(keys_iin),2):
+        keyf = keys_iin[i]
+        keys = keys_iin[i+1]
+        key_dataf = data[keyf]
+        key_datas = data[keys]
+        key_exp_p = exp_parameters.loc[keyf]
+        voltages, durs, sim_f = setup_sim(model, key_dataf, key_exp_p, process, dt=dt, **setup_sim_args)
+        if not post_process is None:
+            sim_fw = partial(post_process, sim_f=sim_f)
+        else:
+            sim_fw = sim_f
+    
+        sim_fs.append(sim_fw)
+        datas.append(np.concatenate((key_dataf, key_datas)))
+
+
+if run_fits['Activation']:
+    mp_locs += list(range(2,7))#list(range(2,5))
+
+    # activation normalized to driving force
+    keys_iin = [('1323431_2',	'Dataset'),\
+                ('8928874_7',	'Dataset D fresh'), ('8928874_7',	'Dataset D day 1'),\
+                ('8928874_7',	'Dataset D day 3'), ('8928874_7',	'Dataset D day 5'),\
                 ('21647304_3',	'Dataset A Adults'), ('21647304_3',	'Dataset A Pediatrics')]
     keys_all += keys_iin
 
+    setupSimExp(sim_fs=sim_fs,
+                datas=datas,
+                data=data,
+                exp_parameters=exp_parameters,
+                keys_iin=keys_iin,
+                model=model,
+                process=peakCurr,
+                dt=dt,
+                post_process=None,
+                setup_sim_args={'sim_args':{'retOptions': 
+                                {'G': False, 'INa': True, 'INaL': True,
+                                 'Open': True, 'RevPot': False},
+                                'solver': solver}})#'ret': [False,True,False]
+
+    #iv curve
+    keys_iin = [
+    ('8928874_7',	'Dataset C day 1'), ('8928874_7',	'Dataset C day 3'),
+    ('8928874_7',	'Dataset C day 5'), ('8928874_7',	'Dataset C fresh'),
+#    ('12890054_3',	'Dataset C Control'), ('12890054_3',	'Dataset D Control'),
+#    ('12890054_5',	'Dataset C Control'), ('12890054_5',	'Dataset D Control'),
+    ('1323431_1',	'Dataset B'), ('1323431_3',	'Dataset A 2'),
+    ('1323431_3',	'Dataset A 20'), ('1323431_3',	'Dataset A 5'),
+    ('1323431_4',	'Dataset B Control'),
+    ('21647304_1',	'Dataset B Adults'), ('21647304_1', 'Dataset B Pediatrics')
+    ]
+    keys_all += keys_iin
+    
     setupSimExp(sim_fs=sim_fs,\
                 datas=datas,\
                 data=data,\
@@ -230,114 +392,53 @@ if run_fits['Group']:
                 model=model,\
                 process=peakCurr,\
                 dt=dt,\
-                post_process=None,
-                setup_sim_args={'ret': [False,True,False]})
+                process_data=minNorm_data,#partial(minMaxNorm_data, feature_range=(-1, 0)),\
+                post_process=minNorm,#partial(minMaxNorm, feature_range=(-1, 0)),
+                setup_sim_args={'sim_args':{'solver': solver}})
 
-    if __name__ == '__main__':
-        np.seterr(all='ignore')
-        with Pool(processes=20) as proc_pool:
-            diff_fn = partial(calc_diff, model_parameters_full=model_params,\
-                            mp_locs=mp_locs, sim_func=sim_fs, data=datas, l=0,pool=proc_pool)
-            res = optimize.least_squares(diff_fn, sub_mps, \
-                            bounds=([0]*len(sub_mps), [np.inf]*len(sub_mps)))
-            res.keys_all = keys_all
-            fit_results_joint['group'] = res
-
-            filename = './fits_res_joint_ohara_{cdate.month:02d}{cdate.day:02d}.pkl'
-            filename = filename.format(cdate=datetime.datetime.now())
-            with open(filename, 'wb') as file:
-                pickle.dump(fit_results_joint, file)
-
-            iNa_fit_functions.plot1 = False #sim
-            iNa_fit_functions.plot2 = True #diff
-            iNa_fit_functions.plot3 = False #tau
-
-            diff_fn(res.x)
-
-
-
-if run_fits['Recovery']:
-    # I2/I1
-    keys_iin = [('1323431_8', 'Dataset A -140'), ('1323431_8',	'Dataset A -120'),\
-                ('1323431_8',	'Dataset A -100')]
-    process = normalize2prepulse
-
-    for key in keys_iin:
-        key_data = data[key]
-        key_exp_p = exp_parameters.loc[key]
-        voltages, durs, sim_f = setup_sim(model, key_data, key_exp_p, process, dt=dt)
-
-        model_params = np.ones(model.num_params)
-        mp_locs = np.arange(model.num_params)#[2,3,13]#4
+if __name__ == '__main__':
+    with Pool(processes=20) as proc_pool:
+        mp_locs = list(set(mp_locs))
         sub_mps = model_params[mp_locs]
+        sub_mp_bounds = np.array(model().param_bounds)[mp_locs]
+        min_res = []
+        all_res = []
 
         diff_fn = partial(calc_diff, model_parameters_full=model_params,\
-                          mp_locs=mp_locs, sim_func=sim_f, data=key_data, l=0)
-        res = optimize.least_squares(diff_fn, sub_mps, \
-                                     bounds=([0]*len(sub_mps), [np.inf]*len(sub_mps)))
-        fit_results[key] = res
+                        mp_locs=mp_locs, sim_func=sim_fs, data=datas,\
+                            l=0,pool=proc_pool,ssq=True,\
+                            results=all_res)
+        minimizer_kwargs = {"method": lstsq_wrap, "options":{"ssq": False}}#"bounds": sub_mp_bounds,
+        res = optimize.basinhopping(diff_fn, sub_mps, \
+                                    minimizer_kwargs=minimizer_kwargs,\
+                                    niter=10, T=80,\
+                                    callback=partial(save_results, results=min_res),\
+                                    stepsize=1)
+        # accept_test=partial(check_bounds, bounds=sub_mp_bounds))
+#            minimizer_kwargs = {"method": "BFGS", "options": {"maxiter":100}}
+#        res = optimize.dual_annealing(diff_fn, bounds=sub_mp_bounds,\
+#                                          local_search_options=minimizer_kwargs,\
+#                                          maxiter=100)
+#        res = optimize.least_squares(diff_fn, sub_mps, \
+#                        bounds=np.array(model().param_bounds)[mp_locs].T)
+        res.keys_all = keys_all
+        res.all_res = all_res
+        res.min_res = min_res
+        fit_key = frozenset(rfs for rfs in run_fits if run_fits[rfs])
+        fit_results_joint[fit_key] = res
 
-#next get the individual optimums
-if run_fits['Inactivation']:
-    # normalized to no prepulse
-    keys_iin = [('7971163_4', 'Dataset 32ms'), ('7971163_4', 'Dataset 64ms'),\
-                ('7971163_4', 'Dataset 128ms'), ('7971163_4', 'Dataset 256ms'),\
-                ('7971163_4', 'Dataset 512ms')]
-    process = partial(normalized2val, durn=3)
+        filename = './fits_res_joint_ohara_{cdate.month:02d}{cdate.day:02d}_{cdate.hour:02d}{cdate.minute:02d}.pkl'
+        filename = filename.format(cdate=datetime.datetime.now())
+        with open(filename, 'wb') as file:
+            pickle.dump(fit_results_joint, file)
 
-    for key in keys_iin:
-        key_data = data[key]
-        key_exp_p = exp_parameters.loc[key]
-        voltages, durs, sim_f = setup_sim(model, key_data, key_exp_p, process, dt=dt)
+        #plot!
+        iNa_fit_functions.plot1 = False #sim
+        iNa_fit_functions.plot2 = True #diff
+        iNa_fit_functions.plot3 = False #tau
 
-        sim_f_baseline = copy.deepcopy(sim_f)
-        sim_f_baseline.keywords['durs'] = [1,10]
-        sim_f_baseline.keywords['voltages'] = [\
-                               sim_f_baseline.keywords['voltages'][0], \
-                               sim_f_baseline.keywords['voltages'][3]]
-        sim_f_baseline.keywords['process'] = peakCurr
+        error = diff_fn(res.x, exp_params=exp_parameters, keys=keys_all)
 
-        model_params = np.ones(model.num_params)
-        if useJoint:
-            model_params_joint = [result.x for joint, result in fit_results_joint.items()\
-                                  if key in joint][0]
-            model_params = model_params_joint
-        mp_locs = np.arange(model.num_params)#[0,1,3,5,6,12]
-        sub_mps = model_params[mp_locs]
-        baseline = sim_f_baseline(model_params)
-        process = partial(process, val=baseline[0])
-        sim_f.keywords['process'] = process
-
-        diff_fn = partial(calc_diff, model_parameters_full=model_params,\
-                          mp_locs=mp_locs, sim_func=sim_f, data=key_data, l=0)
-        res = optimize.least_squares(diff_fn, sub_mps, \
-                                     bounds=([0]*len(sub_mps), [np.inf]*len(sub_mps)))
-        fit_results[key] = res
-
-
-
-if run_fits['TauInact']:
-
-    # tau inactivation
-    keys_iin = [('8928874_8', 'Dataset E fresh'), ('8928874_8',	'Dataset E day 1'),\
-                ('8928874_8',	'Dataset E day 3'), ('8928874_8',	'Dataset E day 5')]
-    process = partial(calcExpTauInact,func=biExp,x0=biExp_params,\
-                      keep=1,calc_dur=1)
-
-    for key in keys_iin:
-        key_data = data[key]
-        key_exp_p = exp_parameters.loc[key]
-        voltages, durs, sim_f = setup_sim(model, key_data, key_exp_p, process, dt=dt)
-
-        model_params = np.ones(model.num_params)
-        mp_locs = np.arange(model.num_params)#[2,3,4,13]
-        sub_mps = model_params[mp_locs]
-
-        diff_fn = partial(calc_diff, model_parameters_full=model_params,\
-                          mp_locs=mp_locs, sim_func=sim_f, data=key_data,l=0)
-        res = optimize.least_squares(diff_fn, sub_mps, \
-                                     bounds=([0]*len(sub_mps), [np.inf]*len(sub_mps)))
-        fit_results[key] = res
 
 if run_fits['Tau Act']:
     sim_fs = []
@@ -349,8 +450,8 @@ if run_fits['Tau Act']:
     process = partial(calcExpTauAct,func=monoExp,x0=monoExp_params,\
                       keep=1,calc_dur=(1,1))
 
-    model_params = np.ones(model.num_params)
-    mp_locs = np.arange(model.num_params)#[2,3,4,13]
+    model_params = np.ones(model().num_params)
+    mp_locs = np.arange(model().num_params)#[2,3,4,13]
     sub_mps = model_params[mp_locs]
 
 

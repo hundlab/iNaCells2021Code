@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+2#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
 Created on Fri Jan  3 10:10:44 2020
@@ -25,48 +25,70 @@ class HRD09_Ina:
     Gate.hl = 0.3497149946
     caM = 0.0003647207545
 
-    def __init__(self, TEMP = 310.0):
+    def __init__(self, TEMP = 310.0, naO = 140.0, naI = 9.889359792):
         self.TEMP = TEMP
+        self.naO = naO
+        self.naI = naI
 
-        self.am1 = .32
-        self.bm1 = .08
-        self.bh1 = .13
-        self.ah1 = .135
-        self.bh2 = 3.56
-        self.bj1 = .3
-        self.vshift1 = 1
+
+        self.ammult1 = .32
+        self.bmmult1 = np.log(.08)
+        self.bmtau1 = 11.0
+
+        self.bhmult1 = .13
+        self.bhtau1 = -11.1
+        self.ahmult1 = .135
+        self.ahtau1 = -6.8
+        self.bhmult2 = 3.56
+        self.bhtau2 = 1/.079
+        self.bhmult3 = 3.1E5
+        self.bhtau3 = 1/.35
+
+        self.bjmult1 = .3
+        self.bjtau1 = 1/2.535E-7
+        self.bjmult2 = -.1
+        self.bjtau2 = 1     #not in HRd model
+        self.ajmult1 = -1.2714E5
+        self.ajtau1 = 1/.2444
+        self.ajmult2 = 3.474E-5
+        self.ajtau2 = 1/.04391
+        self.ajmult3
+        self.ajtau3
+
+
+        self.vshiftbaseline = -3.25
 
         self.MaxGNa = 16.0;  # different from HRd08 - 8.25;
 
-    def updateIna(self, vOld, dt, naO = 140, naI = 9.889359792):
+    def updateIna(self, vOld, dt):
         KMCAM = 0.3;
         deltaalpha = -.18;
 
         camfact = 1 / (1 + pow((KMCAM / self.caM), 4.0));
-        vshift = -3.25 * camfact * self.vshift1;
+        vshift = self.vshiftbaseline * camfact;
 
-        ENa = (self.RGAS * self.TEMP / self.FDAY) * log(naO / naI);
+        ENa = (self.RGAS * self.TEMP / self.FDAY) * log(self.naO / self.naI);
 
         Rate = obj()
-        Rate.am = self.am1 * (vOld + 47.13) / (1 - exp(-.1 * (vOld + 47.13)));
-        Rate.bm = self.bm1 * exp(-vOld / 11.0);
+        Rate.am = self.ammult1 * (vOld + 47.13) / (1 - exp(-.1 * (vOld + 47.13)));
+        Rate.bm = exp(-(vOld / self.bmtau1) + self.bmmult1);
 
         if ((vOld - vshift) >= -40.0):
             Rate.ah = 0.0;
-            Rate.bh = 1 / (self.bh1 * (1 + exp((vOld - vshift + 10.66) / (-11.1))));
+            Rate.bh = 1 / (self.bhmult1 * (1 + exp((vOld - vshift + 10.66) / (self.bhtau1))));
         else:
-            Rate.ah = self.ah1 * exp((80.0 + vOld - vshift) / (-6.8));
-            Rate.bh = self.bh2 * exp(.079 * (vOld - vshift)) + (3.1E5) * exp(.35 * (vOld - vshift));
+            Rate.ah = self.ahmult1 * exp((80.0 + vOld - vshift) / (self.ahtau1));
+            Rate.bh = self.bhmult2 * exp((vOld - vshift)/self.bhtau2) + (self.bhmult3) * exp((vOld - vshift)/self.bhtau3);
 
         if ((vOld - vshift) >= -40.0):
             Rate.aj = 0.0;
 
-            bj1a = exp((-2.535E-7) * (vOld - vshift));
-            Rate.bj = (self.bj1) * bj1a / (exp(-.1 * (vOld - vshift + 32)) + 1);
+            bj1a =  (self.bjmult1) * exp((vOld - vshift)/self.bjtau1); #why is bjtau1 so large?
+            Rate.bj = bj1a / (exp(self.bjmult2 * (vOld - vshift + 32)/self.bjtau2) + 1); #this may need reformulated
 
         else:
-            aj1a = (-1.2714E5) * exp(.2444 * (vOld - vshift));
-            aj1b = (3.474E-5) * exp(-.04391 * (vOld - vshift));
+            aj1a = (self.ajmult1) * exp((vOld - vshift)/self.ajtau1);
+            aj1b = (self.ajmult2) * exp(-(vOld - vshift)/self.ajtau2);
             aj1c = (vOld - vshift + 37.78) / (1 + exp(.311 * (vOld - vshift + 79.23)));
 
             Rate.aj = (1 + camfact * deltaalpha) * (aj1a - aj1b) * aj1c;
@@ -87,14 +109,14 @@ class HRD09_Ina:
         tj = 1 / (Rate.aj + Rate.bj);
         self.Gate.j = js - (js - self.Gate.j) * exp(-dt / tj);
 
-        iNa = (MaxGNa * self.Gate.m * self.Gate.m * self.Gate.m * self.Gate.h * self.Gate.j) * (vOld - ENa);
+        iNa = (self.MaxGNa * self.Gate.m * self.Gate.m * self.Gate.m * self.Gate.h * self.Gate.j) * (vOld - ENa);
 
         KMCAM = 0.3;
         deltag = 0.0095;
 
         camfact = 1 / (1 + pow((KMCAM / self.caM), 4.0));
 
-        ENa = (self.RGAS * self.TEMP / self.FDAY) * log(naO / naI);
+        ENa = (self.RGAS * self.TEMP / self.FDAY) * log(self.naO / self.naI);
 
         Rate = obj()
         Rate.aml = .32 * (vOld + 47.13) / (1 - exp(-.1 * (vOld + 47.13)));
@@ -113,76 +135,79 @@ class HRD09_Ina:
         return iNa+iNal
 
 class OHaraRudy_INa():
-    num_params = 27
+    num_params = 29
+    param_bounds = [(-5,5)]*29
     RGAS = 8314.0;
     FDAY = 96487.0;
 
     KmCaMK = 0.15
     CaMKa = 1e-5
 
-    def __init__(self, GNa=1, GNaL=1, \
-                 mss_tauFactor=1, tm_mult1Factor=1, tm_tau1Factor=1,\
-                 tm_mult2Factor=1, tm_tau2Factor=1,\
-                 hss_tauFactor=1, thf_mult1Factor=1, thf_tau1Factor=1,\
-                 thf_mult2Factor=1, thf_tau2Factor=1,\
-                 ths_mult1Factor=1, ths_tau1Factor=1,\
-                 ths_mult2Factor=1, ths_tau2Factor=1,\
-                 Ahf_multFactor=1,\
-                 tj_baselineFactor=1, tj_mult1Factor=1, tj_tau1Factor=1,\
-                 tj_mult2Factor=1, tj_tau2Factor=1,\
-                 hssp_tauFactor=1, tssp_multFactor=1, tjp_multFactor=1,\
-                 mLss_tauFactor=1, hLss_tauFactor=1,\
-                 thL_baselineFactor=1, thLp_multFactor=1,\
-                 TEMP = 310.0):
+    def __init__(self, GNaFactor=0, GNaLFactor=0, \
+                 mss_tauFactor=0, tm_mult1Factor=0, tm_tau1Factor=0,\
+                 tm_mult2Factor=0, tm_tau2Factor=0,\
+                 hss_tauFactor=0, thf_mult1Factor=0, thf_tau1Factor=0,\
+                 thf_mult2Factor=0, thf_tau2Factor=0,\
+                 ths_mult1Factor=0, ths_tau1Factor=0,\
+                 ths_mult2Factor=0, ths_tau2Factor=0,\
+                 Ahf_multFactor=0,\
+                 tj_baselineFactor=0, tj_mult1Factor=0, tj_tau1Factor=0,\
+                 tj_mult2Factor=0, tj_tau2Factor=0,\
+                 hssp_tauFactor=0, tssp_multFactor=0, tjp_multFactor=0,\
+                 mLss_tauFactor=0, hLss_tauFactor=0,\
+                 thL_baselineFactor=0, thLp_multFactor=0,\
+                 TEMP = 310.0, naO = 140.0, naI = 7):
 
         # scaling currents
-        self.GNa = 75*GNa;
-        self.GNaL = 0.0075*GNaL;
+        self.GNa = 75*np.exp(GNaFactor);
+        self.GNaL = 0.0075*np.exp(GNaLFactor);
 
         #m gate
-        self.mss_tau = 9.871*mss_tauFactor
+        self.mss_tau = 9.871*np.exp(mss_tauFactor)
 
-        self.tm_mult1 = 6.765*tm_mult1Factor
-        self.tm_tau1 = 34.77*tm_tau1Factor
-        self.tm_mult2 = 8.552*tm_mult2Factor
-        self.tm_tau2 = 5.955*tm_tau2Factor
+        self.tm_mult1 = 6.765*np.exp(tm_mult1Factor)
+        self.tm_tau1 = 34.77*np.exp(tm_tau1Factor)
+        self.tm_mult2 = 8.552*np.exp(tm_mult2Factor)
+        self.tm_tau2 = 5.955*np.exp(tm_tau2Factor)
 
         #h gate
-        self.hss_tau = 6.086*hss_tauFactor
+        self.hss_tau = 6.086*np.exp(hss_tauFactor)
 
-        self.thf_mult1 = 1.432e-5*thf_mult1Factor
-        self.thf_tau1 = 6.285*thf_tau1Factor
-        self.thf_mult2 = 6.149*thf_mult2Factor
-        self.thf_tau2 = 20.27*thf_tau2Factor
+        self.thf_mult1 = 1.432e-5*np.exp(thf_mult1Factor)
+        self.thf_tau1 = 6.285*np.exp(thf_tau1Factor)
+        self.thf_mult2 = 6.149*np.exp(thf_mult2Factor)
+        self.thf_tau2 = 20.27*np.exp(thf_tau2Factor)
 
-        self.ths_mult1 = 0.009794*ths_mult1Factor
-        self.ths_tau1 = 28.05*ths_tau1Factor
-        self.ths_mult2 = 0.3343*ths_mult2Factor
-        self.ths_tau2 = 56.66*ths_tau2Factor
+        self.ths_mult1 = 0.009794*np.exp(ths_mult1Factor)
+        self.ths_tau1 = 28.05*np.exp(ths_tau1Factor)
+        self.ths_mult2 = 0.3343*np.exp(ths_mult2Factor)
+        self.ths_tau2 = 56.66*np.exp(ths_tau2Factor)
 
-        self.Ahf_mult = Ahf_multFactor
+        self.Ahf_mult = np.exp(Ahf_multFactor)
 
         #j gate
-        self.tj_baseline = 2.038*tj_baselineFactor
-        self.tj_mult1 = 0.02136*tj_mult1Factor
-        self.tj_tau1 = 8.281*tj_tau1Factor
-        self.tj_mult2 = 0.3052*tj_mult2Factor
-        self.tj_tau2 = 38.45*tj_tau2Factor
+        self.tj_baseline = 2.038*np.exp(tj_baselineFactor)
+        self.tj_mult1 = 0.02136*np.exp(tj_mult1Factor)
+        self.tj_tau1 = 8.281*np.exp(tj_tau1Factor)
+        self.tj_mult2 = 0.3052*np.exp(tj_mult2Factor)
+        self.tj_tau2 = 38.45*np.exp(tj_tau2Factor)
 
         # phosphorylated gates
-        self.hssp_tau = 6.086*hssp_tauFactor
-        self.tssp_mult = 3.0*tssp_multFactor
-        self.tjp_mult = 1.46*tjp_multFactor
+        self.hssp_tau = 6.086*np.exp(hssp_tauFactor)
+        self.tssp_mult = 3.0*np.exp(tssp_multFactor)
+        self.tjp_mult = 1.46*np.exp(tjp_multFactor)
 
         #late gates & late gate phosphorylation
-        self.mLss_tau = 5.264*mLss_tauFactor
-        self.hLss_tau = 7.488*hLss_tauFactor
+        self.mLss_tau = 5.264*np.exp(mLss_tauFactor)
+        self.hLss_tau = 7.488*np.exp(hLss_tauFactor)
         self.hLssp_tau = self.hLss_tau
 
-        self.thL_baseline = 200.0*thL_baselineFactor
-        self.thLp_mult = 3*thLp_multFactor
+        self.thL_baseline = 200.0*np.exp(thL_baselineFactor)
+        self.thLp_mult = 3*np.exp(thLp_multFactor)
 
         self.TEMP = TEMP
+        self.naO = naO
+        self.naI = naI
 
         self.m = 0
         self.hf = 1
@@ -196,12 +221,12 @@ class OHaraRudy_INa():
 
         self.recArray = []
 
-    def updateIna(self, vOld, dt, naO = 140.0, naI = 7, ret=[True]*3):
-        ena = (self.RGAS * self.TEMP / self.FDAY) * log(naO / naI)
+    def update(self, vOld, dt, ret=[True]*3):
+        ena = (self.RGAS * self.TEMP / self.FDAY) * log(self.naO / self.naI)
 
         mss = 1.0 / (1.0 + exp((-(vOld + 39.57)) / self.mss_tau));
         tm = 1.0 / (self.tm_mult1 * exp((vOld + 11.64) / self.tm_tau1) +
-                           8.552 * exp(-(vOld + 77.42) / 5.955));
+                           self.tm_mult2 * exp(-(vOld + 77.42) / self.tm_tau2));
         self.m = mss - (mss - self.m) * exp(-dt / tm);
 
         hss = 1.0 / (1 + exp((vOld + 82.90) / self.hss_tau));
@@ -236,7 +261,7 @@ class OHaraRudy_INa():
         tmL = tm;
         self.mL = mLss - (mLss - self.mL) * exp(-dt / tmL);
         hLss = 1.0 / (1.0 + exp((vOld + 87.61) / self.hLss_tau));
-        thL = 200.0;
+        thL = self.thL_baseline;
         self.hL = hLss - (hLss - self.hL) * exp(-dt / thL);
         hLssp = 1.0 / (1.0 + exp((vOld + 93.81) / self.hLssp_tau));
         thLp = self.thLp_mult * thL;
@@ -267,9 +292,8 @@ class Grandi_Ina():
         gna = 23.0;  # mS/uF
         Ena = self.RGAS * self.TEMP / self.FDAY * log(naO / naI);
 
-        m_inf = 1 / ((1 + exp(-(56.86 + vOld) / 9.03)) *
-                     (1 + exp(-(56.86 + vOld) / 9.03)));
-        tau_m = 0.1292 * exp(-((vOld + 45.79) / 15.54) * ((vOld + 45.79) / 15.54)) + 0.06487 * exp(-((vOld - 4.823) / 51.12) * ((vOld - 4.823) / 51.12));
+        m_inf = 1 / ((1 + exp(-(56.86 + vOld) / 9.03))**2);
+        tau_m = 0.1292 * exp(-((vOld + 45.79) / 15.54) **2) + 0.06487 * exp(-((vOld - 4.823) / 51.12)**2);
 
         if (vOld >= -40.0):
             alpha_h = 0.0;
@@ -278,7 +302,7 @@ class Grandi_Ina():
             alpha_h = (0.057 * exp(-(vOld + 80) / 6.8));
             beta_h = ((2.7 * exp(0.079 * vOld) + 3.1E5 * exp(0.3485 * vOld)));
 
-        h_inf =  1 / ((1 + exp((vOld + 71.55) / 7.43)) * (1 + exp((vOld + 71.55) / 7.43)));
+        h_inf =  1 / ((1 + exp((vOld + 71.55) / 7.43)) **2);
         tau_h = 1.0 / (alpha_h + beta_h);
 
         if (vOld >= -40.0):
@@ -293,8 +317,7 @@ class Grandi_Ina():
                     (1 + exp(-0.1378 * (vOld + 40.14))));
 
         tau_j = 1 / (alpha_j + beta_j);
-        j_inf = \
-            1 / ((1 + exp((vOld + 71.55) / 7.43)) * (1 + exp((vOld + 71.55) / 7.43)));
+        j_inf = 1 / ((1 + exp((vOld + 71.55) / 7.43)) **2);
 
         self.gate.m = m_inf - (m_inf - self.gate.m) * exp(-dt / tau_m);
         self.gate.h = h_inf - (h_inf - self.gate.h) * exp(-dt / tau_h);
@@ -309,7 +332,7 @@ class Grandi_Ina():
 class Koval_ina:
     num_params = 22
 
-    def __init__(self, P1a1Factor=1, P2a1Factor=1, P1a4Factor=1, P1a5Factor=1, P2a5Factor=1, P1b1Factor=1, P2b1Factor=1, P1b2Factor=1, P2b2Factor=1, P1b3Factor=1, P2b3Factor=1, P1b5Factor=1, P2b5Factor=1, P1a6Factor=1, P1b6Factor=1, P1a7Factor=1, P1b7Factor=1, P1a8Factor=1, P1b8Factor=1, P1a9Factor=1, P1b9Factor=1, gNaFactor = 1, TEMP = 310.0):
+    def __init__(self, P1a1Factor=1, P2a1Factor=1, P1a4Factor=1, P1a5Factor=1, P2a5Factor=1, P1b1Factor=1, P2b1Factor=1, P1b2Factor=1, P2b2Factor=1, P1b3Factor=1, P2b3Factor=1, P1b5Factor=1, P2b5Factor=1, P1a6Factor=1, P1b6Factor=1, P1a7Factor=1, P1b7Factor=1, P1a8Factor=1, P1b8Factor=1, P1a9Factor=1, P1b9Factor=1, gNaFactor = 1, TEMP = 310.0, naO = 140.0, naI = 8.35504003):
 
         self.P1a1 = P1a1Factor*7.5207
         self.P2a1 = P2a1Factor*0.1027
@@ -354,6 +377,8 @@ class Koval_ina:
         self.TEMP = TEMP
         self.FDAY = 96485
         self.RanolazineConc = 0
+        self.naO = naO
+        self.naI = naI
 
         self.valid = True
         self.recurseCounter = 0
@@ -361,10 +386,7 @@ class Koval_ina:
         self.recArray = []
 
 
-    def updateIna(self, Vm, dt, naO = 140.0, naI = 8.35504003, ret=[True]*3):
-#        for k in self.__dict__ : exec(k+'= self.'+k)
-
-
+    def updateIna(self, Vm, dt, ret=[True]*3):
         Vm_rel = Vm
         vm_shift = 0#15
         Vm = Vm - vm_shift
@@ -431,8 +453,8 @@ class Koval_ina:
         if min(self.C1+dC1,self.C2+dC2,self.C3+dC3,self.IC2+dIC2,self.IC3+dIC3,self.IF+dIF,self.IM1+dIM1,self.IM2+dIM2,self.LC1+dLC1,self.LC2+dLC2,self.LC3+dLC3,self.O+dO,self.LO+dLO,self.OB+dOB,self.LOB+dLOB) < 0:
             dtn = dt/2
             self.recurseCounter += 1
-            self.updateIna(Vm_rel, dtn, naO, naI, ret=ret)
-            self.updateIna(Vm_rel, dtn, naO, naI, ret=ret)
+            self.updateIna(Vm_rel, dtn, ret=ret)
+            self.updateIna(Vm_rel, dtn, ret=ret)
             self.recurseCounter -= 1
             print('timestep reduced: ',dtn)
 #            print(np.round([dC1, dC2, dC3, dIC2, dIC3, dIF, dIM1, dIM2, dLC1, dLC2, dLC3, dO, dLO, dOB, dLOB],4))
@@ -457,7 +479,7 @@ class Koval_ina:
 
         if self.recurseCounter == 0:
             self.recArray.append((self.C1,self.C2,self.C3,self.IC2,self.IC3,self.IF,self.IM1,self.IM2,self.LC1,self.LC2,self.LC3,self.O,self.LO,self.OB,self.LOB))
-        ENa = self.RGAS * self.TEMP / self.FDAY * log((naO) / (naI))
+        ENa = self.RGAS * self.TEMP / self.FDAY * log((self.naO) / (self.naI))
         iNa = np.prod(np.array([self.gNa, (self.O+self.LO), (Vm - ENa)])[ret])
 
         return iNa

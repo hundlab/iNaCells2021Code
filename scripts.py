@@ -15,23 +15,23 @@ import numpy as np
 data_root = 'C:/Users/grat05/OneDrive for Business/Data'
 
 def load_all_data(data_root = data_root):
-        files = [glb.replace('\\','/') for glb in iglob(data_root+'/data/*/*')]
-        data = {}
-        for file in files:
-            try:
-                filename = file.split('/')[-1]
-                pmid,ext = filename.split('.')
-                if ext == 'json':
-                    js = json.load(open(file,'r'))
-                    data[pmid] = js
-                else:
+    files = [glb.replace('\\','/') for glb in iglob(data_root+'/data/*/*')]
+    data = {}
+    for file in files:
+        try:
+            filename = file.split('/')[-1]
+            pmid,ext = filename.split('.')
+            if ext == 'json':
+                js = json.load(open(file,'r'))
+                data[pmid] = js
+            else:
 
-                        df = pd.read_csv(file)
-                        data[pmid] = df
-            except:
-                print("Could not read file:")
-                print(file)
-        return data
+                df = pd.read_csv(file)
+                data[pmid] = df
+        except:
+            print("Could not read file:")
+            print(file)
+    return data
 
 try: all_data
 except NameError: all_data = load_all_data()
@@ -66,7 +66,9 @@ def load_data_parameters(filename, sheet_name, data_root = data_root, data = all
         for dataset in datasets:
             if dataset['name'] == idx[1]:
                 fig_data = [entry['value'] for entry in dataset['data']]
-                sub_data[idx] = np.array(fig_data)
+                temp_data = np.array(fig_data)
+                order = np.argsort(temp_data[:,0])
+                sub_data[idx] = temp_data[order,:]
                 break
 
     return data_parameters, sub_data
