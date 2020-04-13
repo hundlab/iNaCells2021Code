@@ -43,11 +43,14 @@ def triExp(t,A1,tau1,A2,tau2,A3,tau3,A0,sign=-1):
     return A1*np.exp(-t/tau1)+A2*np.exp(sign*t/tau2)+A3*np.exp(sign*t/tau3)+A0
 
 
-def biExp(t,A1,tau1,A2,tau2,A0,sign=-1):
+def biExp(t,tau1,tau2,A):#t,A1,tau1,A2,tau2,A0,sign=-1):
 #    if np.sign(A1) != np.sign(A2):
 #        A1 = -A1
 #A1*np.exp(-t/tau1)+A2*np.exp(sign*t/tau2)+A0
-    return -np.exp(-t/tau1+A1) -np.exp(-t/tau2+A2) + A0
+    A0=1
+    A1 = A/(A+1)
+    A2 = 1-A1
+    return -A1*np.exp(-t/tau1) -A2*np.exp(-t/tau2) + A0
 
 def monoExp(t,A1,tau1,A0,sign=-1):
     val = A1*np.exp(sign*t/tau1)+A0
@@ -56,7 +59,7 @@ def monoExp(t,A1,tau1,A0,sign=-1):
 def diff(x, pred, func, times, ssq=False):
     error = pred-func(times, *x)
     if ssq:
-        return np.sum(np.square(error))
+        return 0.5*np.sum(np.square(error))
     else:
         return error
 
@@ -66,11 +69,19 @@ def lstsq_wrap(fun, x0, bounds=None, **kwargs):
     else:
         #it had best be convertable to a numpy array
         bounds = np.array(bounds).T
-    res = optimize.least_squares(fun, x0, bounds=bounds)
-    res.func_ret = res.fun
-    res.fun = res.cost
-    return res
+    options = None
+    if 'ssq' in kwargs:
+        options = {'ssq': kwargs['ssq']}
+    try:
+        res = optimize.least_squares(fun, x0, bounds=bounds, kwargs=options)
+        res.resid = res.fun
+        res.fun = res.cost
+        return res
+    except ValueError:
+        return optimize.OptimizeResult(x=x0, success=False, status=-1, fun=np.inf)
 
+
+from sklearn.preprocessing import minmax_scale
 def calcExpTauInact(times, current, func, x0, sub_sim_pos, durs, calc_dur = 1, keep=None, bounds=(-np.inf, np.inf), **kwargs):
     if keep is None:
         keep = np.ones_like(x0, dtype=bool)
@@ -92,20 +103,30 @@ def calcExpTauInact(times, current, func, x0, sub_sim_pos, durs, calc_dur = 1, k
     min_loc = cut_loc#np.argmax(np.abs(current[stimMask]))
 #    min_loc = np.where(stimMask)[0][min_loc]
     stimMask = stimMask & (times[min_loc] < times)
+    ncurrent = minmax_scale(current[stimMask], (0,1))
+    ntimes = times[stimMask]-times[stimMask][0]
 #    coefs, _ = optimize.curve_fit(func, times[min_loc:]-times[min_loc], current[min_loc:],\
 #                                  p0=(current[min_loc]*3/4,1,current[min_loc]*1/4,1,0))
-    diff_fn = partial(diff, pred=current[stimMask], func=func, \
-                      times=times[stimMask]-times[min_loc])
-    res = optimize.least_squares(diff_fn, x0, bounds=([-np.inf, 0, -np.inf, 2, -np.inf],[np.inf, 5, np.inf, 30, np.inf]))
-    tau_f,tau_s = res.x[1], res.x[3]
-    tau_f,tau_s = min(tau_f,tau_s), max(tau_f,tau_s)
-    res.x[1], res.x[3] = tau_f,tau_s
+    diff_fn = partial(diff, pred=ncurrent, func=func, \
+                      times=ntimes, ssq=True)
+    bounds=([0, 0, 0],[7, 40, 50])
+#    res2 = optimize.least_squares(diff_fn, x0,bounds=bounds)#bounds=([0, 0, 0, 2, -np.inf],[np.inf, 5, np.inf, 30, np.inf])
+ 
+    bounds = np.array(bounds)
+    minimizer_kwargs = {"method": lstsq_wrap, "options":{"ssq": False}}
+    res = optimize.dual_annealing(diff_fn, bounds=bounds.T,\
+                                          local_search_options=minimizer_kwargs)
+#    print(res.x - res2.x)
+#    minimizer_kwargs = {"method": "BFGS", "options": {"maxiter":100}}
 
 #    diff_fn = partial(diff, pred=current[stimMask], func=func, \
 #                      times=times[stimMask]-times[min_loc], ssq=True)
 #    minimizer_kwargs = {"method": lstsq_wrap}#"BFGS"}
 #    res = optimize.basinhopping(diff_fn, x0, minimizer_kwargs=minimizer_kwargs, niter=10)
 #    res = optimize.minimize(diff_fn, x0, **minimizer_kwargs)
+    tau_f,tau_s = res.x[:2]#res.x[1], res.x[3]
+    tau_f,tau_s = min(tau_f,tau_s), max(tau_f,tau_s)
+ 
     if plot3:
         try:
             print(res.success, res.optimality, res.cost, tau_f,tau_s)
@@ -114,8 +135,15 @@ def calcExpTauInact(times, current, func, x0, sub_sim_pos, durs, calc_dur = 1, k
         plt.figure()
         plt.axvline(0,c='black')
         plt.title(str(res.x))
-        plt.plot(times-times[min_loc], current)
-        plt.plot(times[min_loc:]-times[min_loc], func(times[min_loc:]-times[min_loc],*res.x))
+        plt.plot(ntimes, ncurrent)
+        plt.plot(ntimes, func(ntimes,*res.x))
+#    print(1/np.mean(np.abs(res.jac[:,0])), 1/np.mean(np.abs(res.jac[:,1])), np.abs(res.x[-1]))
+#    check = int(1/np.mean(np.abs(res.jac[:,0]))>100) + int(1/np.mean(np.abs(res.jac[:,1]))>1000) + int(np.abs(res.x[-1]) > 20)
+#    if check >= 2:
+#        tau_s = 0
+
+    res.x[:2] = tau_f,tau_s
+    #res.x[1], res.x[3] = tau_f,tau_s
     return res.x[keep]
 
 def calcExpTauAct(times, current, func, x0, sub_sim_pos, durs, calc_dur = (0,1), keep=None, **kwargs):
@@ -225,7 +253,7 @@ def scipySolver(flat_durs, flat_voltages, run_model, solver, dt=None):
     wrap_run_model = ModelWrapper(flat_durs, flat_voltages, run_model)
     
     res = solver(wrap_run_model, (0,wrap_run_model.t_end), run_model.state_vals,
-                 first_step=dt, max_step = max_step, vectorized=True)
+                 first_step=dt, max_step = max_step)#, vectorized=True)
 #    print(res)
     times = res.t
     vMs = wrap_run_model.getvOld(times)
@@ -279,7 +307,6 @@ def run_sim(model_parameters, model, voltages, durs, sim_param, process,\
         times = np.array(times)
         iNa = np.array(iNa)
         vMs = np.array(vMs)
-        out.append(process(times=times,current=iNa,vMs=vMs,sub_sim_pos=x,durs=durs))
         if plot1:
             plt.figure()
             plt.subplot(311)
@@ -289,7 +316,11 @@ def run_sim(model_parameters, model, voltages, durs, sim_param, process,\
             plt.subplot(313)
             lines = plt.plot(times, run_model.recArray)
             plt.legend(lines, list(run_model.recArrayNames))
-
+        try:
+            processed = process(times=times,current=iNa,vMs=vMs,sub_sim_pos=x,durs=durs)
+        except:
+            processed = np.nan
+        out.append(processed)
         
     #        if plot1 or plot3:
     #            plt.show()
@@ -452,6 +483,8 @@ def calc_diff_multiple(model_parameters_part, model_parameters_full, sim_func,\
     if mp_locs is None:
         mp_locs = np.ones_like(model_parameters_full, dtype=bool)
     model_parameters_full[mp_locs] = model_parameters_part
+    with np.printoptions(precision=3):
+        print(model_parameters_part)
     error = []
     if not pool is None:
         vals_sims_res = []
@@ -478,7 +511,7 @@ def calc_diff_multiple(model_parameters_part, model_parameters_full, sim_func,\
     p_loss = 1/(model_parameters_full+1)-0.5
     error = np.concatenate((error, l*p_loss))
     with np.printoptions(precision=3):
-        print(model_parameters_part)
+#        print(model_parameters_part)
         print(0.5*np.sum(error**2),np.sum((l*p_loss)**2))
     if not results is None:
         results.append((error,model_parameters_part))
