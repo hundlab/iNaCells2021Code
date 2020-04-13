@@ -7,6 +7,7 @@ Created on Fri Jan  3 10:10:44 2020
 """
 
 import numpy as np
+import pandas as pd
 
 exp = np.exp
 log = np.log
@@ -135,8 +136,8 @@ class HRD09_Ina:
         return iNa+iNal
 
 class OHaraRudy_INa():
-    num_params = 29
-    param_bounds = [(-5,5)]*29
+    num_params = 31
+    param_bounds = [(-10,10)]*29 + [(-20,20)]*2
     RGAS = 8314.0;
     FDAY = 96487.0;
 
@@ -156,13 +157,14 @@ class OHaraRudy_INa():
                  hssp_tauFactor=0, tssp_multFactor=0, tjp_multFactor=0,\
                  mLss_tauFactor=0, hLss_tauFactor=0,\
                  thL_baselineFactor=0, thLp_multFactor=0,\
+                 mss_shiftFactor=0, hss_shiftFactor=0,\
                  TEMP = 310.0, naO = 140.0, naI = 7):
 
-        # scaling currents
+        # scaling currents 0
         self.GNa = 75*np.exp(GNaFactor);
         self.GNaL = 0.0075*np.exp(GNaLFactor);
 
-        #m gate
+        #m gate 2
         self.mss_tau = 9.871*np.exp(mss_tauFactor)
 
         self.tm_mult1 = 6.765*np.exp(tm_mult1Factor)
@@ -170,7 +172,7 @@ class OHaraRudy_INa():
         self.tm_mult2 = 8.552*np.exp(tm_mult2Factor)
         self.tm_tau2 = 5.955*np.exp(tm_tau2Factor)
 
-        #h gate
+        #h gate 7
         self.hss_tau = 6.086*np.exp(hss_tauFactor)
 
         self.thf_mult1 = 1.432e-5*np.exp(thf_mult1Factor)
@@ -183,16 +185,17 @@ class OHaraRudy_INa():
         self.ths_mult2 = 0.3343*np.exp(ths_mult2Factor)
         self.ths_tau2 = 56.66*np.exp(ths_tau2Factor)
 
-        self.Ahf_mult = np.exp(Ahf_multFactor)
+        mixingodds = np.exp(Ahf_multFactor+np.log(99))
+        self.Ahf_mult = mixingodds/(mixingodds+1)# np.exp(Ahf_multFactor)
 
-        #j gate
+        #j gate 17
         self.tj_baseline = 2.038*np.exp(tj_baselineFactor)
         self.tj_mult1 = 0.02136*np.exp(tj_mult1Factor)
         self.tj_tau1 = 8.281*np.exp(tj_tau1Factor)
         self.tj_mult2 = 0.3052*np.exp(tj_mult2Factor)
         self.tj_tau2 = 38.45*np.exp(tj_tau2Factor)
 
-        # phosphorylated gates
+        # phosphorylated gates 
         self.hssp_tau = 6.086*np.exp(hssp_tauFactor)
         self.tssp_mult = 3.0*np.exp(tssp_multFactor)
         self.tjp_mult = 1.46*np.exp(tjp_multFactor)
@@ -204,6 +207,10 @@ class OHaraRudy_INa():
 
         self.thL_baseline = 200.0*np.exp(thL_baselineFactor)
         self.thLp_mult = 3*np.exp(thLp_multFactor)
+
+        #added later
+        self.mss_shift = 39.57+mss_shiftFactor
+        self.hss_shift = 82.90+hss_shiftFactor
 
         self.TEMP = TEMP
         self.naO = naO
@@ -218,10 +225,17 @@ class OHaraRudy_INa():
         self.mL = 0
         self.hL = 1
         self.hLp = 1
+        
+        self.recArrayNames = pd.Index(["m","hf","hs","j","hsp","jp","mL","hL","hLp"])
+       
 
-        self.recArray = []
+        self.recArray = pd.DataFrame(columns=self.recArrayNames)
+        
+        self.retOptions = {'G': True, 'INa': True, 'INaL': True,\
+                                 'Open': True, 'RevPot': True}
 
-    def update(self, vOld, dt, ret=[True]*3):
+
+    def update(self, vOld, dt):
         ena = (self.RGAS * self.TEMP / self.FDAY) * log(self.naO / self.naI)
 
         mss = 1.0 / (1.0 + exp((-(vOld + 39.57)) / self.mss_tau));
@@ -238,7 +252,8 @@ class OHaraRudy_INa():
         Ahs = 1.0 - Ahf;
         self.hf = hss - (hss - self.hf) * exp(-dt / thf);
         self.hs = hss - (hss - self.hs) * exp(-dt / ths);
-        h = Ahf * self.hf + Ahs * self.hs;
+        #h = Ahf * self.hf + Ahs * self.hs;
+        h = Ahf * self.hf + Ahs * self.j;
 
         jss = hss;
         tj = self.tj_baseline + 1.0 / (self.tj_mult1 * exp(-(vOld + 100.6) / self.tj_tau1) +
@@ -254,8 +269,11 @@ class OHaraRudy_INa():
         self.jp = jss - (jss - self.jp) * exp(-dt / tjp);
 
         fINap = (1.0 / (1.0 + self.KmCaMK / self.CaMKa));
-        oprob = self.m * self.m * self.m * ((1.0 - fINap) * h * self.j + fINap * hp * self.jp)
-        INa = np.prod(np.array([self.GNa, oprob, (vOld - ena)])[ret]);
+        oprob = self.m * self.m * self.m * ((1.0 - fINap) * h + fINap * hp * self.jp)
+        #oprob = self.m * self.m * self.m * ((1.0 - fINap) * h * self.j + fINap * hp * self.jp)
+        INa = (self.GNa if self.retOptions['G'] else 1) *\
+              (oprob if self.retOptions['Open'] else 1) *\
+              ((vOld - ena) if self.retOptions['RevPot'] else 1)
 
         mLss = 1.0 / (1.0 + exp((-(vOld + 42.85)) / self.mLss_tau));
         tmL = tm;
@@ -271,12 +289,17 @@ class OHaraRudy_INa():
         fINaLp = (1.0 / (1.0 + self.KmCaMK / self.CaMKa));
         loprob = self.mL * ((1.0 - fINaLp) * self.hL + fINaLp * self.hLp)
 
-        INaL = np.prod(np.array([self.GNaL, loprob, (vOld - ena)])[ret]);
+        INaL = (self.GNaL if self.retOptions['G'] else 1) *\
+               (loprob if self.retOptions['Open'] else 1) *\
+               ((vOld - ena) if self.retOptions['RevPot'] else 1)
 
-        self.recArray.append([self.m, self.hf, self.hs, self.j, self.hsp,\
-                              self.jp, self.mL, self.hL, self.hLp])
+        gates = pd.Series([self.m, self.hf, self.hs, self.j, self.hsp,\
+                              self.jp, self.mL, self.hL, self.hLp], index=self.recArrayNames)
+        self.recArray = self.recArray.append(gates, ignore_index=True)
 
-        return INa+INaL
+        return (INa if self.retOptions['INa'] else 0) +\
+               (INaL if self.retOptions['INaL'] else 0)
+
 
 
 class Grandi_Ina():
