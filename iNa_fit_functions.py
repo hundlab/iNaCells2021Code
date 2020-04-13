@@ -15,6 +15,9 @@ plot2 = True  #diff
 plot3 = True  #tau
 
 
+monoExp_params = [-1,1,0]
+biExp_params = np.array([-1,1,-1,1000,0])
+
 def isList(thing):
     return isinstance(thing, (list, tuple, np.ndarray))
 
@@ -374,6 +377,45 @@ def get_exp_y(data, exp_parameters):
     if not np.isnan(capacitance):
         curr_real = curr_real*1000/capacitance
     return curr_real
+
+class SimResults():
+    def __init__(self, func, **kwargs):
+        self.func = func
+        self.keywords = kwargs
+        self.cache_args = None
+        self.res_cache = None
+    def __call__(self, model_parameters, keys):
+        if self.cache_args is None or model_parameters != self.cache_args:
+            self.cache_args = model_parameters
+            self.res_cache = self.func(model_parameters, **self.keywords)
+            
+        res = []
+        for key in keys:
+            res += list(self.res_cache[key])
+        res = np.array(res)
+        return res
+
+#sim_funcs is now a dict (pmid_fig, name) -> sim_func
+def calc_results(model_parameters_part, model_parameters_full, sim_funcs,\
+                       data, mp_locs=None, pool=None,\
+                       exp_params=None):
+    if mp_locs is None:
+        mp_locs = np.ones_like(model_parameters_full, dtype=bool)
+    model_parameters_full[mp_locs] = model_parameters_part
+    
+    vals_sims = {}
+    if pool is None:
+        for key, sim_func in sim_funcs:
+            vals_sims[key] = sim_func(model_parameters_full)
+    else:
+        vals_sims_res = {}
+        for key, sim_func in sim_funcs.items():
+            vals_sims_res[key] = pool.apply_async(sim_func, (model_parameters_full,))
+        vals_sims = {key: res.get() for key, res in vals_sims_res.items()}
+#    with np.printoptions(precision=3):
+#        print(model_parameters_part)
+    return vals_sims
+
 
 def calc_diff(model_parameters_part, model_parameters_full, sim_func, data, mp_locs=None, l=1, ssq=False, **kwargs):
     if isList(sim_func):

@@ -12,7 +12,7 @@ import pandas as pd
 import numpy as np
 
 
-data_root = 'C:/Users/grat05/OneDrive for Business/Data'
+data_root = './Data'#'C:/Users/grat05/OneDrive for Business/Data'
 
 def load_all_data(data_root = data_root):
     files = [glb.replace('\\','/') for glb in iglob(data_root+'/data/*/*')]
@@ -72,8 +72,3 @@ def load_data_parameters(filename, sheet_name, data_root = data_root, data = all
                 break
 
     return data_parameters, sub_data
-
-#import pickle
-#import datetime
-#pickle.load(open('./fit_results_joint_ohara1.pkl','rb'))
-#pickle.dump(fit_results_joint, open('./fits_res_joint_ohara_{cdate.month:02d}{cdate.day:02d}.pkl'.format(cdate=datetime.datetime.now()), 'wb'))

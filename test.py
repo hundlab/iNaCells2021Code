@@ -36,8 +36,8 @@ monoExp_params = [-1,1,0]
 biExp_params = np.array([0,1,0,10,0])
 triExp_params = np.array([-1,2,-1,3,-1,10000,0])
 
-exp_parameters_gating, data_gating = load_data_parameters('/params old/iNa_old.xlsx','gating', data=all_data)
-exp_parameters_iv, data_iv = load_data_parameters('/params old/iNa_old.xlsx','iv_curve', data=all_data)
+exp_parameters_gating, data_gating = load_data_parameters('/params old/INa_old.xlsx','gating', data=all_data)
+exp_parameters_iv, data_iv = load_data_parameters('/params old/INa_old.xlsx','iv_curve', data=all_data)
 
 exp_parameters = exp_parameters_gating.append(exp_parameters_iv, sort=False)
 data_gating.update(data_iv)
