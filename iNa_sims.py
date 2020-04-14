@@ -32,8 +32,8 @@ np.seterr(all='ignore')
 try: run_fits
 except NameError: 
     run_fits = {'Activation':   True,\
-                'Inactivation': True,\
-                'Recovery':     True,\
+                'Inactivation': False,\
+                'Recovery':     False,\
                 'Tau Act':      False
                 }
 
@@ -57,8 +57,8 @@ model_params_initial = np.zeros(model.num_params)#np.array([ 0.        ,  0.    
 #        0.        ,  0.        ,  1.487     , -1.788     , -0.254     ,
 #       -3.423     ,  4.661     ,  0.        ,  0.        ,  0.        ,
 #        0.        ,  0.        ,  0.        ,  0.        ])#np.zeros(model().num_params)
-model_params_initial[[2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21]] = [ 0.505, -0.533, -0.286 , 2.558 , 0.92 ,  0.333 ,14.476 , 2.169 , 1.876, -0.487
- , 3.163 , 3.814 , 2.584 ,-0.772 ,-0.129 , 0.528, -0.868 , 0.319 ,-3.578 , 0.149]
+#model_params_initial[[2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21]] = [ 0.505, -0.533, -0.286 , 2.558 , 0.92 ,  0.333 ,14.476 , 2.169 , 1.876, -0.487
+# , 3.163 , 3.814 , 2.584 ,-0.772 ,-0.129 , 0.528, -0.868 , 0.319 ,-3.578 , 0.149]
 
 
 sim_fs = {}
@@ -224,8 +224,8 @@ if run_fits['Activation']:
     mp_locs += list(range(2,7))#list(range(2,5))
 
     # activation normalized to driving force
-    keys_iin = [('1323431_2',	'Dataset'),\
-                ('8928874_7',	'Dataset D fresh'), ('8928874_7',	'Dataset D day 1'),\
+    keys_iin = [('1323431_2',	'Dataset')]#,\
+    [                ('8928874_7',	'Dataset D fresh'), ('8928874_7',	'Dataset D day 1'),\
                 ('8928874_7',	'Dataset D day 3'), ('8928874_7',	'Dataset D day 5'),\
                 ('21647304_3',	'Dataset A Adults'), ('21647304_3',	'Dataset A Pediatrics')]
     keys_all.append(keys_iin)
@@ -240,34 +240,34 @@ if run_fits['Activation']:
                 dt=dt,
                 post_process=None,
                 setup_sim_args={'sim_args':{'retOptions': 
-                                {'G': False, 'INa': True, 'INaL': True,
+                                {'G': False, 'INa': True, 'INaL': False,
                                  'Open': True, 'RevPot': False},
                                 'solver': solver}})#'ret': [False,True,False]
 
     #iv curve
-    keys_iin = [
-    ('8928874_7',	'Dataset C day 1'), ('8928874_7',	'Dataset C day 3'),
-    ('8928874_7',	'Dataset C day 5'), ('8928874_7',	'Dataset C fresh'),
-#    ('12890054_3',	'Dataset C Control'), ('12890054_3',	'Dataset D Control'),
-#    ('12890054_5',	'Dataset C Control'), ('12890054_5',	'Dataset D Control'),
-    ('1323431_1',	'Dataset B'), ('1323431_3',	'Dataset A 2'),
-    ('1323431_3',	'Dataset A 20'), ('1323431_3',	'Dataset A 5'),
-    ('1323431_4',	'Dataset B Control'),
-    ('21647304_1',	'Dataset B Adults'), ('21647304_1', 'Dataset B Pediatrics')
-    ]
-    keys_all.append(keys_iin)
+#     keys_iin = [
+#     ('8928874_7',	'Dataset C day 1'), ('8928874_7',	'Dataset C day 3'),
+#     ('8928874_7',	'Dataset C day 5'), ('8928874_7',	'Dataset C fresh'),
+# #    ('12890054_3',	'Dataset C Control'), ('12890054_3',	'Dataset D Control'),
+# #    ('12890054_5',	'Dataset C Control'), ('12890054_5',	'Dataset D Control'),
+#     ('1323431_1',	'Dataset B'), ('1323431_3',	'Dataset A 2'),
+#     ('1323431_3',	'Dataset A 20'), ('1323431_3',	'Dataset A 5'),
+#     ('1323431_4',	'Dataset B Control'),
+#     ('21647304_1',	'Dataset B Adults'), ('21647304_1', 'Dataset B Pediatrics')
+#     ]
+#     keys_all.append(keys_iin)
     
-    setupSimExp(sim_fs=sim_fs,\
-                datas=datas,\
-                data=data,\
-                exp_parameters=exp_parameters,\
-                keys_iin=keys_iin,\
-                model=model,\
-                process=peakCurr,\
-                dt=dt,\
-                process_data=minNorm_data,#partial(minMaxNorm_data, feature_range=(-1, 0)),\
-                post_process=minNorm,#partial(minMaxNorm, feature_range=(-1, 0)),
-                setup_sim_args={'sim_args':{'solver': solver}})
+#     setupSimExp(sim_fs=sim_fs,\
+#                 datas=datas,\
+#                 data=data,\
+#                 exp_parameters=exp_parameters,\
+#                 keys_iin=keys_iin,\
+#                 model=model,\
+#                 process=peakCurr,\
+#                 dt=dt,\
+#                 process_data=minNorm_data,#partial(minMaxNorm_data, feature_range=(-1, 0)),\
+#                 post_process=minNorm,#partial(minMaxNorm, feature_range=(-1, 0)),
+#                 setup_sim_args={'sim_args':{'solver': solver}})
 
 
 if run_fits['Tau Act']:

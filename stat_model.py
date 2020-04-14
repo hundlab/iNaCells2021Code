@@ -40,8 +40,8 @@ def make_model(calc_fn, key_groups, datas, model_params_initial, model):
     for i, keys in enumerate(key_groups):
         data = []
         for key in keys:
-            data += list(datas[key])
-        
+            data += list(datas[key][:,1])
+        data = np.array(data)
         # error for each protocol ~ IG
         error_tau = pymc.Gamma("error_var_{}".format(i),
                                       alpha=0.001, beta=0.001,
@@ -58,7 +58,7 @@ def make_model(calc_fn, key_groups, datas, model_params_initial, model):
         biophysical_lik = pymc.Normal('biophysical_lik',
                                       mu=biophysical_results,
                                       tau=error_tau,
-                                      data=np.array(data),
+                                      value=data,
                                       observed=True)
         biophysical_liks.append(biophysical_lik)
     return locals()

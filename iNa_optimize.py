@@ -27,7 +27,8 @@ import pickle
 import datetime
 from sklearn.preprocessing import minmax_scale
 from scipy import integrate
-
+from iNa_sims import sim_fs, datas, model_params_initial, mp_locs, model,\
+    keys_all, exp_parameters
 
 #import sys
 #sys.path.append('./models/build/Debug/')
@@ -40,14 +41,6 @@ iNa_fit_functions.plot2 = False #diff
 iNa_fit_functions.plot3 = False #tau
 
 
-run_fits = {'Activation':   True,\
-            'Inactivation': True,\
-            'Recovery':     True,\
-            'Tau Act':      False
-            }
-
-from iNa_sims import sim_fs, datas, model_params_initial, mp_locs, model,\
-    keys_all, exp_parameters
 
 sim_fs = list(sim_fs.values())
 datas = list(data.values())

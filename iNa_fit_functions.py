@@ -416,7 +416,7 @@ class SimResults():
         self.cache_args = None
         self.res_cache = None
     def __call__(self, model_parameters, keys):
-        if self.cache_args is None or model_parameters != self.cache_args:
+        if self.cache_args is None or np.array_equal(model_parameters, self.cache_args):
             self.cache_args = model_parameters
             self.res_cache = self.func(model_parameters, **self.keywords)
             
@@ -442,7 +442,13 @@ def calc_results(model_parameters_part, model_parameters_full, sim_funcs,\
         vals_sims_res = {}
         for key, sim_func in sim_funcs.items():
             vals_sims_res[key] = pool.apply_async(sim_func, (model_parameters_full,))
-        vals_sims = {key: res.get() for key, res in vals_sims_res.items()}
+        vals_sims = {}
+        for key, res in vals_sims_res.items():
+            try:
+                vals_sims[key] = res.get()
+            except:
+                vals_sims[key] = np.inf*np.ones_like(data[key].shape[0])
+
 #    with np.printoptions(precision=3):
 #        print(model_parameters_part)
     return vals_sims

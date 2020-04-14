@@ -14,16 +14,11 @@ from iNa_fit_functions import calc_results
 from multiprocessing import Pool
 from functools import partial
 
+from iNa_sims import sim_fs, datas, keys_all
+from iNa_sims import model_params_initial, model, mp_locs, sub_mps
+from stat_model import make_model
+
 if __name__ == '__main__':
-    run_fits = {'Activation':   False,\
-                'Inactivation': True,\
-                'Recovery':     False,\
-                'Tau Act':      False
-                }
-    
-    from iNa_sims import sim_fs, datas, keys_all
-    from iNa_sims import model_params_initial, model, mp_locs, sub_mps
-    from stat_model import make_model
     
     iNa_fit_functions.plot1 = False #sim
     iNa_fit_functions.plot2 = False #diff
