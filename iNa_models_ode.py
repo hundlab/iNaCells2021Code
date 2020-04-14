@@ -9,8 +9,23 @@ import numpy as np
 import pandas as pd
 
 class OHaraRudy_INa():
-    num_params = 31
-    param_bounds = [(-3,3)]*31
+    num_params = 33
+    param_bounds = [(-3,3)]*2 + \
+                   [(-3,3)]*3 + \
+                   [(-20,20)]*2 + \
+                   [(-3,3), (-20,20), (-20,20)] + \
+                   [(-3,3)]*2 + \
+                   [(-20,20)]*2 + \
+                   [(-3,3)]*2 + \
+                   [(-20,20)] + \
+                   [(-3,3)] + [(-20,20)]*2 +\
+                   [(-3,3)]*2 + \
+                   [(-1,1)]*3 + \
+                   [(-1,1)]*2 + \
+                   [(-1,1)]*2 + \
+                   [(-15,15)]*2 + \
+                   [(-15,15), (-3,3)]    
+                               
     RGAS = 8314.0;
     FDAY = 96487.0;
 
@@ -31,6 +46,7 @@ class OHaraRudy_INa():
                  mLss_tauFactor=0, hLss_tauFactor=0,\
                  thL_baselineFactor=0, thLp_multFactor=0,\
                  mss_shiftFactor=0, hss_shiftFactor=0,\
+                 jss_shiftFactor=0, jss_tauFactor=0,
                  TEMP = 310.0, naO = 140.0, naI = 7):
 
         # scaling currents 0 
@@ -52,7 +68,7 @@ class OHaraRudy_INa():
         self.thf_tau1 = 6.285*np.exp(thf_tau1Factor)
         self.thf_mult2 = 6.149*np.exp(thf_mult2Factor)
         self.thf_tau2 = 20.27*np.exp(thf_tau2Factor)
-
+#12
         self.ths_mult1 = 0.009794*np.exp(ths_mult1Factor)
         self.ths_tau1 = 28.05*np.exp(ths_tau1Factor)
         self.ths_mult2 = 0.3343*np.exp(ths_mult2Factor)
@@ -81,9 +97,11 @@ class OHaraRudy_INa():
         self.thL_baseline = 200.0*np.exp(thL_baselineFactor)
         self.thLp_mult = 3*np.exp(thLp_multFactor)
         
-        #added later
+        #added later 29
         self.mss_shift = 39.57+mss_shiftFactor
         self.hss_shift = 82.90+hss_shiftFactor
+        self.jss_shift = 82.90+jss_shiftFactor
+        self.jss_tau = 6.086*np.exp(jss_tauFactor)
 
         self.TEMP = TEMP
         self.naO = naO
@@ -123,7 +141,7 @@ class OHaraRudy_INa():
 #        self.hs = hss - (hss - self.hs) * np.exp(-dt / ths);
 #        h = Ahf * self.hf + Ahs * self.hs;
 
-        jss = hss;
+        jss = 1.0 / (1 + np.exp((vOld + self.jss_shift) / self.jss_tau));#hss;
         tj = self.tj_baseline + 1.0 / (self.tj_mult1 * np.exp(-(vOld + 100.6) / self.tj_tau1) +
                                    self.tj_mult2 * np.exp((vOld + 0.9941) / self.tj_tau2));
         d_vals[3] = (jss-vals[3]) / tj
@@ -188,7 +206,8 @@ class OHaraRudy_INa():
         fINap = (1.0 / (1.0 + self.KmCaMK / self.CaMKa));
 #        oprob = self.m * self.m * self.m * ((1.0 - fINap) * h * self.j + fINap * hp * self.jp)
 
-        oprob = m**3 * ((1.0 - fINap) *  h  + fINap * hp * jp)
+#        oprob = m**3 * ((1.0 - fINap) *  h  + fINap * hp * jp)
+        oprob = m**3 * ((1.0 - fINap) *  h * j + fINap * hp * jp)
 
         
         INa = (self.GNa if self.retOptions['G'] else 1) *\

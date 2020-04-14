@@ -251,6 +251,9 @@ def scipySolver(flat_durs, flat_voltages, run_model, solver, dt=None):
     
     res = solver(wrap_run_model, (0,wrap_run_model.t_end), run_model.state_vals,
                  first_step=dt, max_step = max_step)#, vectorized=True)
+    if not res.success:
+        raise ValueError
+
 #    print(res)
     times = res.t
     vMs = wrap_run_model.getvOld(times)
@@ -313,10 +316,7 @@ def run_sim(model_parameters, model, voltages, durs, sim_param, process,\
             plt.subplot(313)
             lines = plt.plot(times, run_model.recArray)
             plt.legend(lines, list(run_model.recArrayNames))
-        try:
-            processed = process(times=times,current=iNa,vMs=vMs,sub_sim_pos=x,durs=durs)
-        except:
-            processed = np.nan
+        processed = process(times=times,current=iNa,vMs=vMs,sub_sim_pos=x,durs=durs)
         out.append(processed)
         
     #        if plot1 or plot3:
@@ -444,11 +444,17 @@ def calc_diff_multiple(model_parameters_part, model_parameters_full, sim_func,\
     with np.printoptions(precision=3):
         print(model_parameters_part)
     error = []
-    if not pool is None:
-        vals_sims_res = []
-        for i in range(len(sim_func)):
-            vals_sims_res.append(pool.apply_async(sim_func[i], (model_parameters_full,)))
-        vals_sims = [res.get() for res in vals_sims_res]
+    try:
+        if not pool is None:
+            vals_sims_res = []
+            for i in range(len(sim_func)):
+                vals_sims_res.append(pool.apply_async(sim_func[i], (model_parameters_full,)))
+            vals_sims = [res.get() for res in vals_sims_res]
+    except:
+        if ssq:
+            return np.inf
+        else:
+            return np.inf * np.ones_like(sum(map(lambda d: d.shape[0], data)))
 
     for i in range(len(sim_func)):
         sub_dat = data[i]

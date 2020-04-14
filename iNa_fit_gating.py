@@ -197,20 +197,19 @@ model_params = np.zeros(model.num_params)#np.array([ 0.        ,  0.        ,  1
 #model_params[[7, 8, 9, 10, 11, 16, 17, 18, 19, 20, 21, 30]] = np.array([ 6.58208045e-07,  1.17536742e-06, -8.42258691e-07,  3.37525667e-07,
 #        4.50068931e-07, -5,  9.53840262e-08,  3.55121179e-07,
 #        9.86234378e-07,  4.09994171e-07,  4.64260091e-07, -1.51089218e-06])
-#model_params[[18,19]] = [np.log(1/100), 16]
+
 # model_params[[7, 8, 9, 10, 11, 16, 17, 18, 19, 20, 21, 30]] = np.array([-0.16394553,  1.42641913,  1.28038251,  1.29642736, -1.16718484,
 #        -4.44375614,  1.30915332, -4.0239836 , 13.42958559,  2.20538925,
 #         1.69031741, -1.93559858])
-# model_params[[8,9]] = [np.log(1/100), 16]
-model_params[[7, 8, 9, 10, 11, 16, 17, 18, 19, 20, 21, 30]] = np.array([ 1.81552155e-01, -5.05609163e+00,  2.82459638e+01,  2.20175018e-01,
-       -3.55661129e-03, -6.74500269e+01,  1.66096238e-02, -3.33020753e+00,
-        1.62150070e+01,  7.80529744e-01,  5.35441384e-01, -5.99818295e-01])
+#model_params[[8,9]] = [np.log(1/100), 16]
+#model_params[[18,19]] = [np.log(1/100), 16]
+
 mp_locs = []
 
 
 
 if run_fits['Recovery']:
-    mp_locs += [7] + list(range(17,22)) + [30]
+    mp_locs += list(range(17,22)) + [31,32] # [7]
 
     # I2/I1 Recovery
     keys_iin = [('1323431_8', 'Dataset A -140'), ('1323431_8',	'Dataset A -120'),\
@@ -378,7 +377,7 @@ if run_fits['Activation']:
                 dt=dt,
                 post_process=None,
                 setup_sim_args={'sim_args':{'retOptions': 
-                                {'G': False, 'INa': True, 'INaL': True,
+                                {'G': False, 'INa': True, 'INaL': False,
                                  'Open': True, 'RevPot': False},
                                 'solver': solver}})#'ret': [False,True,False]
 
