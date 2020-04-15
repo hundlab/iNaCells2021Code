@@ -9,7 +9,7 @@ Created on Mon Apr 13 09:55:44 2020
 
 #from iNa_models import Koval_ina, OHaraRudy_INa
 from iNa_models_ode import OHaraRudy_INa
-from scripts import load_data_parameters, load_all_data, all_data
+from scripts import load_data_parameters, load_all_data, all_data, out_dir
 import iNa_fit_functions
 from iNa_fit_functions import normalize2prepulse, setup_sim, run_sim, \
 calc_diff, peakCurr, normalized2val, calcExpTauInact, monoExp, biExp,\
@@ -78,13 +78,13 @@ if __name__ == '__main__':
         res.keys_all = keys_all
         res.all_res = all_res
         res.min_res = min_res
-        fit_key = frozenset(rfs for rfs in run_fits if run_fits[rfs])
-        fit_results_joint[fit_key] = res
+        res.fits = set(rfs for rfs in run_fits if run_fits[rfs])
 
-        filename = './fits_res_joint_ohara_{cdate.month:02d}{cdate.day:02d}_{cdate.hour:02d}{cdate.minute:02d}.pkl'
+        filename = 'fits_res_joint_ohara_{cdate.month:02d}{cdate.day:02d}_{cdate.hour:02d}{cdate.minute:02d}.pkl'
         filename = filename.format(cdate=datetime.datetime.now())
-        with open(filename, 'wb') as file:
-            pickle.dump(fit_results_joint, file)
+        filepath = out_dir+'/'+filename
+        with open(filepath, 'wb') as file:
+            pickle.dump(res, file)
 
         #plot!
         iNa_fit_functions.plot1 = False #sim

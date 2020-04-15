@@ -10,9 +10,17 @@ import json
 from glob import iglob
 import pandas as pd
 import numpy as np
+import sys
 
+if len(sys.argv) > 1:
+    data_root = sys.argv[1]
+else:
+    data_root = 'C:/Users/grat05/OneDrive for Business/Data'#'./Data'#
+if len(sys.argv) > 2:
+    out_dir = sys.argv[2]
+else:
+    out_dir = './'
 
-data_root = 'C:/Users/grat05/OneDrive for Business/Data'#'./Data'#
 
 def load_all_data(data_root = data_root):
     files = [glb.replace('\\','/') for glb in iglob(data_root+'/data/*/*')]
