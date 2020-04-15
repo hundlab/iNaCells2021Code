@@ -6,8 +6,8 @@ Created on Mon Feb 17 08:06:36 2020
 @author: grat05
 """
 
-from iNa_models import Koval_ina, OHaraRudy_INa
-#from iNa_models_ode import OHaraRudy_INa
+#from iNa_models import Koval_ina, OHaraRudy_INa
+from iNa_models_ode import OHaraRudy_INa
 from scripts import load_data_parameters, load_all_data, all_data
 import iNa_fit_functions
 from iNa_fit_functions import normalize2prepulse, setup_sim, run_sim, \
@@ -135,6 +135,8 @@ model_params = np.zeros(model.num_params)
 model_params[[7, 8, 9, 10, 11, 16, 17, 18, 19, 20, 21, 30]] = np.array([ 1.81552155e-01, -5.05609163e+00,  2.82459638e+01,  2.20175018e-01,
        -3.55661129e-03, -6.74500269e+01,  1.66096238e-02, -3.33020753e+00,
         1.62150070e+01,  7.80529744e-01,  5.35441384e-01, -5.99818295e-01])
+model_params[[5,6]] = [np.log(1/100), 16]
+
 #model_params[2:7] = 1.49431475, -1.84448536, -1.21581823,  0.04750437,  0.09809738
 #model_params[2:7] = 0
 #model_params[[2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21]] = [ 0.505, -0.533, -0.286 , 2.558 , 0.92 ,  0.333 ,14.476 , 2.169 , 1.876, -0.487
@@ -183,26 +185,26 @@ solver = partial(integrate.solve_ivp, method='BDF')
 
 
 
-# mp_locs += [7] + list(range(17,22))
+mp_locs += [7] + list(range(17,22))
 
-# # I2/I1 Recovery
-# keys_iin = [('1323431_8', 'Dataset A -140')]#, ('1323431_8',	'Dataset A -120'),\
-# [            ('1323431_8',	'Dataset A -100'),\
-#             ('21647304_3',	'Dataset C Adults'), ('21647304_3',	'Dataset C Pediatrics'),\
-#             ('8928874_9', 'Dataset fresh'), ('8928874_9', 'Dataset day 1'),\
-#             ('8928874_9', 'Dataset day 3'), ('8928874_9', 'Dataset day 5')]
-# keys_all += keys_iin
+# I2/I1 Recovery
+keys_iin = [('1323431_8', 'Dataset A -140')]#, ('1323431_8',	'Dataset A -120'),\
+[            ('1323431_8',	'Dataset A -100'),\
+            ('21647304_3',	'Dataset C Adults'), ('21647304_3',	'Dataset C Pediatrics'),\
+            ('8928874_9', 'Dataset fresh'), ('8928874_9', 'Dataset day 1'),\
+            ('8928874_9', 'Dataset day 3'), ('8928874_9', 'Dataset day 5')]
+keys_all += keys_iin
 
-# setupSimExp(sim_fs=sim_fs,\
-#             datas=datas,\
-#             data=data,\
-#             exp_parameters=exp_parameters,\
-#             keys_iin=keys_iin,\
-#             model=model,\
-#             process=normalize2prepulse,\
-#             dt=dt,\
-#             post_process=None,
-#             setup_sim_args={'sim_args':{'solver': solver}})
+setupSimExp(sim_fs=sim_fs,\
+            datas=datas,\
+            data=data,\
+            exp_parameters=exp_parameters,\
+            keys_iin=keys_iin,\
+            model=model,\
+            process=normalize2prepulse,\
+            dt=dt,\
+            post_process=None,
+            setup_sim_args={'sim_args':{'solver': solver}})
 
 # recovery normalized to preprepulse
 keys_iin = [\
@@ -230,26 +232,26 @@ setupSimExp(sim_fs=sim_fs,\
 
 # mp_locs += list(range(7,17))
 
-#inactivation normalized to no prepulse
-keys_iin = [('7971163_4', 'Dataset 32ms')]#, ('7971163_4', 'Dataset 64ms'),\
-[            ('7971163_4', 'Dataset 512ms'),\
-            ('7971163_4', 'Dataset 128ms'), ('7971163_4', 'Dataset 256ms'),\
+# #inactivation normalized to no prepulse
+# keys_iin = [('7971163_4', 'Dataset 32ms')]#, ('7971163_4', 'Dataset 64ms'),\
+# [            ('7971163_4', 'Dataset 512ms'),\
+#             ('7971163_4', 'Dataset 128ms'), ('7971163_4', 'Dataset 256ms'),\
 
-            ('8928874_8',	'Dataset C fresh'), ('8928874_8',	'Dataset C day 1'),\
-            ('8928874_8',	'Dataset C day 3'), ('8928874_8',	'Dataset C day 5')]
-#('21647304_3',	'Dataset B Adults'), ('21647304_3',	'Dataset B Pediatrics')
-keys_all += keys_iin
+#             ('8928874_8',	'Dataset C fresh'), ('8928874_8',	'Dataset C day 1'),\
+#             ('8928874_8',	'Dataset C day 3'), ('8928874_8',	'Dataset C day 5')]
+# #('21647304_3',	'Dataset B Adults'), ('21647304_3',	'Dataset B Pediatrics')
+# keys_all += keys_iin
 
-setupSimExp(sim_fs=sim_fs,\
-            datas=datas,\
-            data=data,\
-            exp_parameters=exp_parameters,\
-            keys_iin=keys_iin,\
-            model=model,\
-            process=partial(normalized2val, durn=3),\
-            dt=dt,\
-            post_process=normalizeToBaseline,
-            setup_sim_args={'sim_args':{'solver': solver}})
+# setupSimExp(sim_fs=sim_fs,\
+#             datas=datas,\
+#             data=data,\
+#             exp_parameters=exp_parameters,\
+#             keys_iin=keys_iin,\
+#             model=model,\
+#             process=partial(normalized2val, durn=3),\
+#             dt=dt,\
+#             post_process=normalizeToBaseline,
+#             setup_sim_args={'sim_args':{'solver': solver}})
 
 # inactivation normalized to first
 keys_iin = [('7971163_5',	'Dataset A -65')]#, ('7971163_5',	'Dataset A -75')]#,\
@@ -269,7 +271,7 @@ setupSimExp(sim_fs=sim_fs,\
             setup_sim_args={'sim_args':{'solver': solver}})
 
 
-# # mp_locs += list(range(2,7))
+# mp_locs += list(range(2,7))
 
 # #activation normalized to driving force
 # keys_iin = [('1323431_2',	'Dataset')]#,\
@@ -290,7 +292,7 @@ setupSimExp(sim_fs=sim_fs,\
 #             setup_sim_args={"hold_dur": 50,\
 #                             'sim_args':{
 #                                 'retOptions': \
-#                                     {'G': False, 'INa': True, 'INaL': True,\
+#                                     {'G': False, 'INa': True, 'INaL': False,\
 #                                       'Open': True, 'RevPot': False},\
 #                                 'solver': solver}})
 
