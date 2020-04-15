@@ -36,7 +36,7 @@ if __name__ == '__main__':
     with Pool() as proc_pool:
         
         calc_fn = partial(calc_results, model_parameters_full=model_params_initial,\
-                        mp_locs=mp_locs, sim_funcs=sim_fs, data=datas,\
+                        mp_locs=mp_locs, sim_funcs=sim_fs, data=datas,error_fill=0,\
                         pool=proc_pool)
             
         
