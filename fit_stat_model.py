@@ -9,6 +9,7 @@ Created on Fri Apr 10 17:43:47 2020
 import pymc
 import datetime
 
+from scripts import out_dir
 import iNa_fit_functions
 from iNa_fit_functions import calc_results
 from multiprocessing import Pool
@@ -28,6 +29,7 @@ if __name__ == '__main__':
 {cdate.month:02d}{cdate.day:02d}_{cdate.hour:02d}{cdate.minute:02d}\
 .pickle'
     model_name = model_name.format(cdate=datetime.datetime.now())
+    db_path = out_dir+'/'+model_name
 
 
     with Pool() as proc_pool:
@@ -38,6 +40,6 @@ if __name__ == '__main__':
             
         
         made_model = make_model(calc_fn, keys_all, datas, sub_mps, model)
-        S = pymc.MCMC(made_model, db='pickle', dbname=model_name)
+        S = pymc.MCMC(made_model, db='pickle', dbname=db_path)
         S.sample(iter=10, burn=5, thin=1)
         #pymc.Matplot.plot(S)

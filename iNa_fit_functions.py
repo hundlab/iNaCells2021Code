@@ -445,7 +445,6 @@ class SimResults():
         self.cache_args = None
         self.res_cache = None
     def __call__(self, model_parameters, keys):
-        model_parameters = np.array(model_parameters)
         print(self.cache_args == model_parameters)
         if self.cache_args is None or not np.array_equal(model_parameters, self.cache_args):
             print(model_parameters)
@@ -470,20 +469,20 @@ def calc_results(model_parameters_part, model_parameters_full, sim_funcs,\
     model_parameters_full[mp_locs] = model_parameters_part
     
     vals_sims = {}
-    if pool is None:
-        for key, sim_func in sim_funcs:
-            vals_sims[key] = sim_func(model_parameters_full)
-    else:
-        vals_sims_res = {}
-        for key, sim_func in sim_funcs.items():
-            vals_sims_res[key] = pool.apply_async(sim_func, (model_parameters_full,))
-        vals_sims = {}
-        for key, res in vals_sims_res.items():
-            try:
-                vals_sims[key] = res.get()
-            except:
-                vals_sims[key] = np.inf*np.ones_like(data[key].shape[0])
-
+    sims_iters = {}
+    for key, sim_func in sim_funcs.items():
+        sims_iter = sim_func(model_parameters_full, pool=pool)
+        sims_iters[key] = sims_iter
+        next(sims_iter)
+    for key in sim_funcs:
+        sims_iter = sims_iters[key]
+        try:
+            vals_sims[key] = next(sims_iter)
+        except Exception as e:
+#            print(e)
+            sub_dat = data[key]
+            vals_sims[key] = np.inf*np.ones(sub_dat.shape[0])
+    
 #    with np.printoptions(precision=3):
 #        print(model_parameters_part)
     return vals_sims
