@@ -12,7 +12,7 @@ import pandas as pd
 import numpy as np
 
 
-data_root = './Data'#'C:/Users/grat05/OneDrive for Business/Data'
+data_root = 'C:/Users/grat05/OneDrive for Business/Data'#'./Data'#
 
 def load_all_data(data_root = data_root):
     files = [glb.replace('\\','/') for glb in iglob(data_root+'/data/*/*')]

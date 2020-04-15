@@ -9,6 +9,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy import optimize
 from functools import partial
+from sklearn.preprocessing import minmax_scale
 
 plot1 = True  #sim
 plot2 = True  #diff
@@ -81,7 +82,6 @@ def lstsq_wrap(fun, x0, bounds=None, **kwargs):
         return optimize.OptimizeResult(x=x0, success=False, status=-1, fun=np.inf)
 
 
-from sklearn.preprocessing import minmax_scale
 def calcExpTauInact(times, current, func, x0, sub_sim_pos, durs, calc_dur = 1, keep=None, bounds=(-np.inf, np.inf), **kwargs):
     if keep is None:
         keep = np.ones_like(x0, dtype=bool)
@@ -234,6 +234,7 @@ def standardSolver(flat_durs, flat_voltages, run_model, dt):
 
 class ModelWrapper():
     def __init__(self, flat_durs, flat_voltages, run_model):
+        self.call_count = 0
         self.run_model = run_model
         self.times = np.array([sum(flat_durs[:i]) for i in range(len(flat_durs)+1)])
         self.flat_voltages = np.array(flat_voltages)
@@ -244,16 +245,24 @@ class ModelWrapper():
         vOld = self.flat_voltages[loc]
         return vOld
     def __call__(self, t, vals):
+        if self.call_count > 200000:
+            print("Error too many calls", self.call_count)
+            raise ValueError
+        self.call_count += 1
         vOld = self.getvOld(t)
         ddt_vals =  self.run_model.ddtcalc(vals, vOld)
         return ddt_vals
+    def jac(self, t, vals):
+        vOld = self.getvOld(t)
+        ddy_vals = self.run_model.ddycalc(vOld)
+        return np.diag(ddy_vals)
 
 def scipySolver(flat_durs, flat_voltages, run_model, solver, dt=None):
     max_step = np.min(flat_durs[flat_durs > 0])/2
     wrap_run_model = ModelWrapper(flat_durs, flat_voltages, run_model)
     
     res = solver(wrap_run_model, (0,wrap_run_model.t_end), run_model.state_vals,
-                 first_step=dt, max_step = max_step)#, vectorized=True)
+                 first_step=dt, max_step = max_step, jac=wrap_run_model.jac)#, vectorized=True)
     if not res.success:
         raise ValueError
 
@@ -262,6 +271,30 @@ def scipySolver(flat_durs, flat_voltages, run_model, solver, dt=None):
     vMs = wrap_run_model.getvOld(times)
     iNa = run_model.calcCurrent(res.y, vMs)
     return times, iNa, vMs
+
+def solveAndProcesses(flat_durs, flat_voltages, run_model, solver, dt, process, sub_sim_pos, durs):
+    if solver is None:
+        times, iNa, vMs = standardSolver(flat_durs, flat_voltages, run_model, dt)
+    else:
+        times, iNa, vMs = scipySolver(flat_durs, flat_voltages, run_model, solver,
+                                      dt)
+    times = np.array(times)
+    iNa = np.array(iNa)
+    vMs = np.array(vMs)
+    
+    if plot1:
+        plt.figure()
+        plt.subplot(311)
+        plt.plot(times, iNa)
+        plt.subplot(312)
+        plt.plot(times, vMs)
+        plt.subplot(313)
+        lines = plt.plot(times, run_model.recArray)
+        plt.legend(lines, list(run_model.recArrayNames))
+        
+    processed = process(times=times,current=iNa,vMs=vMs,sub_sim_pos=sub_sim_pos,durs=durs)
+
+    return processed
 
 # def scipySolver(flat_durs, flat_voltages, run_model, solver, dt=None):
 #     max_step = np.min(flat_durs[flat_durs > 0])/2
@@ -275,8 +308,8 @@ def scipySolver(flat_durs, flat_voltages, run_model, solver, dt=None):
 #     iNa = run_model.calcCurrent(res.y, vMs)
 #     return times, iNa, vMs
 
-def run_sim(model_parameters, model, voltages, durs, sim_param, process,\
-            dt=0.005, solver=None, retOptions=None):#ret = [True]*3
+def run_sim(model_parameters, model, voltages, durs, sim_param, process, post_process,\
+            dt=0.005, solver=None, retOptions=None, pool=None):#ret = [True]*3
     out = []
     try:
         counterDur = max(map(len, filter(isList,durs)))
@@ -290,43 +323,40 @@ def run_sim(model_parameters, model, voltages, durs, sim_param, process,\
     if counter == 0:
         counter = 1
     
-    
-    for x in range(counter):
-        model_args = list(model_parameters)
-        model_kwargs = {'TEMP': sim_param['TEMP'], 'naO': sim_param['naO'], 'naI': sim_param['naI']}
+    model_args = list(model_parameters)
+    model_kwargs = {'TEMP': sim_param['TEMP'], 'naO': sim_param['naO'], 'naI': sim_param['naI']}
+    for sub_sim_pos in range(counter):
         run_model = model(*model_args, **model_kwargs)
         if not retOptions is None:
             run_model.retOptions = retOptions
             
-        flat_durs = np.clip(flatten_durs(durs, x), a_min=0, a_max=None)
-        flat_voltages = flatten_durs(voltages, x)
+        flat_durs = np.clip(flatten_durs(durs, sub_sim_pos), a_min=0, a_max=None)
+        flat_voltages = flatten_durs(voltages, sub_sim_pos)
 
-        if solver is None:
-            times, iNa, vMs = standardSolver(flat_durs, flat_voltages, run_model, dt)
+        if pool is not None:
+            processed = pool.apply_async(solveAndProcesses, 
+                                                   (flat_durs, flat_voltages, \
+                                                    run_model, solver, dt, \
+                                                    process, sub_sim_pos, durs))
         else:
-            times, iNa, vMs = scipySolver(flat_durs, flat_voltages, run_model, solver,
-                                          dt)
+            processed = solveAndProcesses(flat_durs, flat_voltages, run_model, \
+                                          solver, dt,  process, sub_sim_pos, durs)
         
-        times = np.array(times)
-        iNa = np.array(iNa)
-        vMs = np.array(vMs)
-        if plot1:
-            plt.figure()
-            plt.subplot(311)
-            plt.plot(times, iNa)
-            plt.subplot(312)
-            plt.plot(times, vMs)
-            plt.subplot(313)
-            lines = plt.plot(times, run_model.recArray)
-            plt.legend(lines, list(run_model.recArrayNames))
-        processed = process(times=times,current=iNa,vMs=vMs,sub_sim_pos=x,durs=durs)
         out.append(processed)
-        
-    #        if plot1 or plot3:
-    #            plt.show()
-    return np.array(out)
+    
+    yield
+    if pool is not None:
+        out2 = []
+        for processed in out:
+            out2.append(processed.get())
+        out = out2
+    out = np.array(out)
+    if not post_process is None:
+        out =  post_process(np.array(out))
+    
+    yield out
 
-def setup_sim(model, data, exp_parameters, process, dt=0.005, hold_dur=1, sim_args={}): #ret = [True]*3
+def setup_sim(model, data, exp_parameters, hold_dur=1, sim_args={}): #ret = [True]*3
     voltages = []
     durs = []
     sim_param = {}
@@ -397,8 +427,7 @@ def setup_sim(model, data, exp_parameters, process, dt=0.005, hold_dur=1, sim_ar
     durs = list(filter(lambda x: isList(x) or ~np.isnan(x), durs))
     voltages  = list(filter(lambda x: isList(x) or ~np.isnan(x), voltages))
     f_call = partial(run_sim, model=model, voltages=voltages, durs=durs,\
-                     sim_param=sim_param, process=process, dt=dt,\
-                     **sim_args)
+                     sim_param=sim_param, **sim_args)
     return voltages, durs, f_call
 
 
@@ -455,7 +484,7 @@ def calc_results(model_parameters_part, model_parameters_full, sim_funcs,\
 
 
 def calc_diff(model_parameters_part, model_parameters_full, sim_func, data, mp_locs=None, l=1, ssq=False, **kwargs):
-    if isList(sim_func):
+    if isList(sim_func) or isinstance(sim_func, dict):
         return calc_diff_multiple(model_parameters_part, model_parameters_full, sim_func, data, mp_locs, l, ssq, **kwargs)
     else:
         return calc_diff_single(model_parameters_part, model_parameters_full, sim_func, data, mp_locs, l, ssq, **kwargs)
@@ -466,7 +495,8 @@ def calc_diff_single(model_parameters_part, model_parameters_full, sim_func,\
     if mp_locs is None:
         mp_locs = np.ones_like(model_parameters_full, dtype=bool)
     model_parameters_full[mp_locs] = model_parameters_part
-    vals_sim = sim_func(model_parameters_full)
+    sims_iter = sim_func(model_parameters_full)
+    vals_sim = next(next(sims_iter))
     if plot2:
         plt.figure("Overall")
         plt.plot(data[:,0], vals_sim)
@@ -492,33 +522,50 @@ def calc_diff_multiple(model_parameters_part, model_parameters_full, sim_func,\
     with np.printoptions(precision=3):
         print(model_parameters_part)
     error = []
-    try:
-        if not pool is None:
-            vals_sims_res = []
-            for i in range(len(sim_func)):
-                vals_sims_res.append(pool.apply_async(sim_func[i], (model_parameters_full,)))
-            vals_sims = [res.get() for res in vals_sims_res]
-    except:
-        if ssq:
-            return np.inf
-        else:
-            return np.inf * np.ones_like(sum(map(lambda d: d.shape[0], data)))
+    sims_iters = {}
+    for key, sim_f_sing in sim_func.items():
+        sims_iter = sim_f_sing(model_parameters_full, pool=pool)
+        sims_iters[key] = sims_iter
+        next(sims_iter)
+    for key in sim_func:
+        sub_dat = data[key]
+        sims_iter = sims_iters[key]
+        try:
+            vals_sim = next(sims_iter)
+            error += list((sub_dat[:,1] - vals_sim))
+            if plot2:
+                if exp_params is None:
+                    plt.figure("Overall")
+                else:
+                    plt.figure(exp_params.loc[key, 'Sim Group'])
+                plt.plot(sub_dat[:,0], vals_sim)
+                plt.scatter(sub_dat[:,0], sub_dat[:,1])
+        except Exception as e:
+#            print(e)
+            error += [np.inf]*sub_dat.shape[0]
+    # if not pool is None:
+    #     vals_sims_res = []
+    #     for i in range(len(sim_func)):
+            
+    #         vals_sims_res.append(pool.apply_async(sim_func[i], (model_parameters_full,)))
+    #     vals_sims = [res.get() for res in vals_sims_res]
+ 
 
-    for i in range(len(sim_func)):
-        sub_dat = data[i]
-        if not pool is None:
-            vals_sim = vals_sims[i]
-        else:
-            sim_f_sing = sim_func[i]
-            vals_sim = sim_f_sing(model_parameters_full)
-        error += list((sub_dat[:,1] - vals_sim))
-        if plot2:
-            if exp_params is None or keys is None:
-                plt.figure("Overall")
-            else:
-                plt.figure(exp_params.loc[keys[i], 'Sim Group'])
-            plt.plot(sub_dat[:,0], vals_sim)
-            plt.scatter(sub_dat[:,0], sub_dat[:,1])
+    # for i in range(len(sim_func)):
+    #     sub_dat = data[i]
+    #     if not pool is None:
+    #         vals_sim = vals_sims[i]
+    #     else:
+    #         sim_f_sing = sim_func[i]
+    #         vals_sim = sim_f_sing(model_parameters_full)
+    #     error += list((sub_dat[:,1] - vals_sim))
+    #     if plot2:
+    #         if exp_params is None or keys is None:
+    #             plt.figure("Overall")
+    #         else:
+    #             plt.figure(exp_params.loc[keys[i], 'Sim Group'])
+    #         plt.plot(sub_dat[:,0], vals_sim)
+    #         plt.scatter(sub_dat[:,0], sub_dat[:,1])
     error = np.array(error)
     p_loss = 1/(model_parameters_full+1)-0.5
     error = np.concatenate((error, l*p_loss))

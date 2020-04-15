@@ -31,9 +31,9 @@ np.seterr(all='ignore')
 
 try: run_fits
 except NameError: 
-    run_fits = {'Activation':   True,\
-                'Inactivation': False,\
-                'Recovery':     False,\
+    run_fits = {'Activation':   False,\
+                'Inactivation': True,\
+                'Recovery':     True,\
                 'Tau Act':      False
                 }
 
@@ -70,7 +70,7 @@ mp_locs = []
 
 
 if run_fits['Recovery']:
-    mp_locs += [7] + list(range(17,22))
+    mp_locs += [7] + list(range(17,22))# + [31,32] # [7]
 
     # I2/I1 Recovery
     keys_iin = [('1323431_8', 'Dataset A -140'), ('1323431_8',	'Dataset A -120'),\
@@ -116,7 +116,7 @@ if run_fits['Recovery']:
 
 
 if run_fits['Inactivation']:
-    mp_locs += list(range(7,17))
+    mp_locs += list(range(7,12)) + [16,30] #7,17
 
     # inactivation normalized to no prepulse
     keys_iin = [('7971163_4', 'Dataset 32ms'), ('7971163_4', 'Dataset 64ms'),\
@@ -130,13 +130,16 @@ if run_fits['Inactivation']:
     setupSimExp(sim_fs=sim_fs,\
                 datas=datas,\
                 data=data,\
-                exp_parameters=exp_parameters,\
+                exp_parameters=exp_parameters,
                 keys_iin=keys_iin,\
                 model=model,\
-                process=partial(normalized2val, durn=3),\
+                process=None, #to be set by normalizToBaseline
                 dt=dt,\
-                post_process=normalizeToBaseline,
+#                post_process=normalizeToBaseline,
                 setup_sim_args={'sim_args':{'solver': solver}})
+    for key in keys_iin:
+        sim_fs[key] = partial(normalizeToBaseline, sim_f=sim_fs[key])
+    
 
     # inactivation normalized to first
     keys_iin = [('7971163_5',	'Dataset A -65'), ('7971163_5',	'Dataset A -75'),\
@@ -193,39 +196,37 @@ if run_fits['Inactivation']:
 
 
     # #tau inactivation fast & slow
-    # keys_iinf = [('1323431_5',	'Dataset B fast'),
-    #              ('21647304_2', 'Dataset C Adults'),
-    #              ('21647304_2', 'Dataset C Pediactric')]
-    # keys_iins = [('1323431_5',	'Dataset B slow'),
-    #              ('21647304_2',	'Dataset D Adults'),
-    #              ('21647304_2',	'Dataset D Pediactric')]
-    # keys_all.append(keys_iinf)
+    # keys_iin = [('21647304_2', 'Dataset C Adults'), ('21647304_2',	'Dataset D Adults'),\
+    #             ('21647304_2', 'Dataset C Pediactric'), ('21647304_2',	'Dataset D Pediactric')]
+    # #('1323431_5',	'Dataset B fast'),('1323431_5',	'Dataset B slow'),\
+    # keys_all += keys_iin
     # process = partial(calcExpTauInact,func=biExp,x0=biExp_params,\
-    #                   keep=[1,3],calc_dur=1)
-    # post_process = resort
-    # setup_sim_args = {'sim_args':{'solver': solver}}
+    #                   keep=[0,1],calc_dur=1)
+    # setup_sim_args = {'sim_args':{'solver': solver,
+    #                               'retOptions': \
+    #                                       {'G': True, 'INa': True, 'INaL': True,\
+    #                                         'Open': True, 'RevPot': True},
+    #                               'dt' : dt,
+    #                               'process' : process,
+    #                               'post_process' : resort}}
     
-    # sims_list = []
-    # datas_list = []
-    # for keyf, keys in zip(keys_iinf, keys_iins):
+    # for i in range(0,len(keys_iin),2):
+    #     keyf = keys_iin[i]
+    #     keys = keys_iin[i+1]
     #     key_dataf = data[keyf]
     #     key_datas = data[keys]
     #     key_exp_p = exp_parameters.loc[keyf]
     #     voltages, durs, sim_f = setup_sim(model, key_dataf, key_exp_p, process, dt=dt, **setup_sim_args)
-    #     if not post_process is None:
-    #         sim_fw = partial(post_process, sim_f=sim_f)
-    #     else:
-    #         sim_fw = sim_f
     
-    #     sim_fs[keyf] = sim_fw
-    #     datas[key] = np.concatenate((key_dataf, key_datas))
+    #     sim_fs.append(sim_f)
+    #     datas.append(np.concatenate((key_dataf, key_datas)))
 
 if run_fits['Activation']:
-    mp_locs += list(range(2,7))#list(range(2,5))
+    mp_locs += list(range(2,7)) + [29]#list(range(2,5))
 
     # activation normalized to driving force
-    keys_iin = [('1323431_2',	'Dataset')]#,\
-    [                ('8928874_7',	'Dataset D fresh'), ('8928874_7',	'Dataset D day 1'),\
+    keys_iin = [('1323431_2',	'Dataset'),\
+                ('8928874_7',	'Dataset D fresh'), ('8928874_7',	'Dataset D day 1'),\
                 ('8928874_7',	'Dataset D day 3'), ('8928874_7',	'Dataset D day 5'),\
                 ('21647304_3',	'Dataset A Adults'), ('21647304_3',	'Dataset A Pediatrics')]
     keys_all.append(keys_iin)
@@ -244,30 +245,30 @@ if run_fits['Activation']:
                                  'Open': True, 'RevPot': False},
                                 'solver': solver}})#'ret': [False,True,False]
 
-    #iv curve
-#     keys_iin = [
-#     ('8928874_7',	'Dataset C day 1'), ('8928874_7',	'Dataset C day 3'),
-#     ('8928874_7',	'Dataset C day 5'), ('8928874_7',	'Dataset C fresh'),
-# #    ('12890054_3',	'Dataset C Control'), ('12890054_3',	'Dataset D Control'),
-# #    ('12890054_5',	'Dataset C Control'), ('12890054_5',	'Dataset D Control'),
-#     ('1323431_1',	'Dataset B'), ('1323431_3',	'Dataset A 2'),
-#     ('1323431_3',	'Dataset A 20'), ('1323431_3',	'Dataset A 5'),
-#     ('1323431_4',	'Dataset B Control'),
-#     ('21647304_1',	'Dataset B Adults'), ('21647304_1', 'Dataset B Pediatrics')
-#     ]
-#     keys_all.append(keys_iin)
+   ## iv curve
+    keys_iin = [
+    ('8928874_7',	'Dataset C day 1'), ('8928874_7',	'Dataset C day 3'),
+    ('8928874_7',	'Dataset C day 5'), ('8928874_7',	'Dataset C fresh'),
+#    ('12890054_3',	'Dataset C Control'), ('12890054_3',	'Dataset D Control'),
+#    ('12890054_5',	'Dataset C Control'), ('12890054_5',	'Dataset D Control'),
+    ('1323431_1',	'Dataset B'), ('1323431_3',	'Dataset A 2'),
+    ('1323431_3',	'Dataset A 20'), ('1323431_3',	'Dataset A 5'),
+    ('1323431_4',	'Dataset B Control'),
+    ('21647304_1',	'Dataset B Adults'), ('21647304_1', 'Dataset B Pediatrics')
+    ]
+    keys_all.append(keys_iin)
     
-#     setupSimExp(sim_fs=sim_fs,\
-#                 datas=datas,\
-#                 data=data,\
-#                 exp_parameters=exp_parameters,\
-#                 keys_iin=keys_iin,\
-#                 model=model,\
-#                 process=peakCurr,\
-#                 dt=dt,\
-#                 process_data=minNorm_data,#partial(minMaxNorm_data, feature_range=(-1, 0)),\
-#                 post_process=minNorm,#partial(minMaxNorm, feature_range=(-1, 0)),
-#                 setup_sim_args={'sim_args':{'solver': solver}})
+    setupSimExp(sim_fs=sim_fs,\
+                datas=datas,\
+                data=data,\
+                exp_parameters=exp_parameters,\
+                keys_iin=keys_iin,\
+                model=model,\
+                process=peakCurr,\
+                dt=dt,\
+                process_data=minNorm_data,#partial(minMaxNorm_data, feature_range=(-1, 0)),\
+                post_process=minNorm,#partial(minMaxNorm, feature_range=(-1, 0)),
+                setup_sim_args={'sim_args':{'solver': solver}})
 
 
 if run_fits['Tau Act']:

@@ -8,6 +8,9 @@ Created on Tue Mar 17 10:31:31 2020
 import numpy as np
 import pandas as pd
 
+class ObjDict():
+    pass
+
 class OHaraRudy_INa():
     num_params = 33
     param_bounds = [(-3,3)]*2 + \
@@ -117,68 +120,90 @@ class OHaraRudy_INa():
                                  'Open': True, 'RevPot': True}
             
 
+    def calc_taus_ss(self, vOld):
+        tau = ObjDict()
+        ss = ObjDict()
+        
+        ss.mss = 1.0 / (1.0 + np.exp((-(vOld + self.mss_shift)) / self.mss_tau));
+        tau.tm = 1.0 / (self.tm_mult1 * np.exp((vOld + 11.64) / self.tm_tau1) +
+                           self.tm_mult2 * np.exp(-(vOld + 77.42) / self.tm_tau2));
+
+        ss.hss = 1.0 / (1 + np.exp((vOld + self.hss_shift) / self.hss_tau));
+        tau.thf = 1.0 / (self.thf_mult1 * np.exp(-(vOld + 1.196) / self.thf_tau1) +
+                            self.thf_mult2 * np.exp((vOld + 0.5096) / self.thf_tau2));
+        tau.ths = 1.0 / (self.ths_mult1 * np.exp(-(vOld + 17.95) / self.ths_tau1) +
+                            self.ths_mult2 * np.exp((vOld + 5.730) / self.ths_tau2));
+
+
+        ss.jss = ss.hss#1.0 / (1 + np.exp((vOld + self.jss_shift) / self.jss_tau));#hss;
+        tau.tj = self.tj_baseline + 1.0 / (self.tj_mult1 * np.exp(-(vOld + 100.6) / self.tj_tau1) +
+                                   self.tj_mult2 * np.exp((vOld + 0.9941) / self.tj_tau2));
+
+        ss.hssp = 1.0 / (1 + np.exp((vOld + 89.1) / self.hssp_tau));
+        tau.thsp = self.tssp_mult * tau.ths;
+
+
+        tau.tjp = self.tjp_mult * tau.tj;
+
+        ss.mLss = 1.0 / (1.0 + np.exp((-(vOld + 42.85)) / self.mLss_tau));
+        tau.tmL = tau.tm;
+
+        ss.hLss = 1.0 / (1.0 + np.exp((vOld + 87.61) / self.hLss_tau));
+        tau.thL = self.thL_baseline;
+
+        ss.hLssp = 1.0 / (1.0 + np.exp((vOld + 93.81) / self.hLssp_tau));
+        tau.thLp = self.thLp_mult * tau.thL;
+
+        return tau, ss
+    
+    def ddycalc(self, vOld):
+        d_vals = np.zeros(9)
+        
+        tau, _ = self.calc_taus_ss(vOld)
+        
+        d_vals[0] = -1 / tau.tm
+
+        d_vals[1] = -1  / tau.thf
+        d_vals[2] = -1  / tau.ths
+
+        d_vals[3] = -1  / tau.tj
+
+        d_vals[4] = -1  / tau.thsp
+
+
+        d_vals[5] = -1  / tau.tjp
+
+        d_vals[6] = -1  / tau.tmL
+
+        d_vals[7] = -1  / tau.thL
+
+        d_vals[8] = -1  / tau.thLp
+
+        return d_vals
+
     def ddtcalc(self, vals, vOld):
         d_vals = np.zeros_like(vals)
         
-        mss = 1.0 / (1.0 + np.exp((-(vOld + self.mss_shift)) / self.mss_tau));
-        tm = 1.0 / (self.tm_mult1 * np.exp((vOld + 11.64) / self.tm_tau1) +
-                           self.tm_mult2 * np.exp(-(vOld + 77.42) / self.tm_tau2));
-
-        d_vals[0] = (mss-vals[0]) / tm
-#        self.m = mss - (mss - self.m) * np.exp(-dt / tm);
-
-        hss = 1.0 / (1 + np.exp((vOld + self.hss_shift) / self.hss_tau));
-        thf = 1.0 / (self.thf_mult1 * np.exp(-(vOld + 1.196) / self.thf_tau1) +
-                            self.thf_mult2 * np.exp((vOld + 0.5096) / self.thf_tau2));
-        ths = 1.0 / (self.ths_mult1 * np.exp(-(vOld + 17.95) / self.ths_tau1) +
-                            self.ths_mult2 * np.exp((vOld + 5.730) / self.ths_tau2));
-#        Ahf = 0.99*self.Ahf_mult;
-#        Ahs = 1.0 - Ahf;
+        tau, ss = self.calc_taus_ss(vOld)
         
-        d_vals[1] = (hss-vals[1]) / thf
-        d_vals[2] = (hss-vals[2]) / ths
-#        self.hf = hss - (hss - self.hf) * np.exp(-dt / thf);
-#        self.hs = hss - (hss - self.hs) * np.exp(-dt / ths);
-#        h = Ahf * self.hf + Ahs * self.hs;
+        d_vals[0] = (ss.mss-vals[0]) / tau.tm
 
-        jss = 1.0 / (1 + np.exp((vOld + self.jss_shift) / self.jss_tau));#hss;
-        tj = self.tj_baseline + 1.0 / (self.tj_mult1 * np.exp(-(vOld + 100.6) / self.tj_tau1) +
-                                   self.tj_mult2 * np.exp((vOld + 0.9941) / self.tj_tau2));
-        d_vals[3] = (jss-vals[3]) / tj
-#        self.j = jss - (jss - self.j) * np.exp(-dt / tj);
-        hssp = 1.0 / (1 + np.exp((vOld + 89.1) / self.hssp_tau));
-        thsp = self.tssp_mult * ths;
+        d_vals[1] = (ss.hss-vals[1]) / tau.thf
+        d_vals[2] = (ss.hss-vals[2]) / tau.ths
 
-        d_vals[4] = (hssp-vals[4]) / thsp
-#        self.hsp = hssp - (hssp - self.hsp) * np.exp(-dt / thsp);
-#        hp = Ahf * self.hf + Ahs * self.hsp;
-        tjp = self.tjp_mult * tj;
+        d_vals[3] = (ss.jss-vals[3]) / tau.tj
 
-        d_vals[5] = (jss-vals[5]) / tjp
-#        self.jp = jss - (jss - self.jp) * np.exp(-dt / tjp);
-
-#        fINap = (1.0 / (1.0 + self.KmCaMK / self.CaMKa));
-#        oprob = self.m * self.m * self.m * ((1.0 - fINap) * h * self.j + fINap * hp * self.jp)
-#        INa = np.prod(np.array([self.GNa, oprob, (vOld - ena)]));
-
-        mLss = 1.0 / (1.0 + np.exp((-(vOld + 42.85)) / self.mLss_tau));
-        tmL = tm;
-        d_vals[6] = (mLss-vals[6]) / tmL
-#        self.mL = mLss - (mLss - self.mL) * np.exp(-dt / tmL);
-        hLss = 1.0 / (1.0 + np.exp((vOld + 87.61) / self.hLss_tau));
-        thL = self.thL_baseline;
-#        self.hL = hLss - (hLss - self.hL) * np.exp(-dt / thL);
-        d_vals[7] = (hLss-vals[7]) / thL
-        hLssp = 1.0 / (1.0 + np.exp((vOld + 93.81) / self.hLssp_tau));
-        thLp = self.thLp_mult * thL;
-#        self.hLp = hLssp - (hLssp - self.hLp) * np.exp(-dt / thLp);
-        d_vals[8] = (hLssp-vals[8]) / thLp
+        d_vals[4] = (ss.hssp-vals[4]) / tau.thsp
 
 
-#        fINaLp = (1.0 / (1.0 + self.KmCaMK / self.CaMKa));
-#        loprob = self.mL * ((1.0 - fINaLp) * self.hL + fINaLp * self.hLp)
+        d_vals[5] = (ss.jss-vals[5]) / tau.tjp
 
-#        INaL = np.prod(np.array([self.GNaL, loprob, (vOld - ena)]));
+        d_vals[6] = (ss.mLss-vals[6]) / tau.tmL
+
+        d_vals[7] = (ss.hLss-vals[7]) / tau.thL
+
+        d_vals[8] = (ss.hLssp-vals[8]) / tau.thLp
+
         return d_vals
     
     def getRevPot(self):

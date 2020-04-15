@@ -28,7 +28,7 @@ import datetime
 from sklearn.preprocessing import minmax_scale
 from scipy import integrate
 from iNa_sims import sim_fs, datas, model_params_initial, mp_locs, model,\
-    keys_all, exp_parameters
+    keys_all, exp_parameters, run_fits
 
 #import sys
 #sys.path.append('./models/build/Debug/')
@@ -41,9 +41,6 @@ iNa_fit_functions.plot2 = False #diff
 iNa_fit_functions.plot3 = False #tau
 
 
-
-sim_fs = list(sim_fs.values())
-datas = list(data.values())
 
 try: fit_results
 except NameError: fit_results = {}
@@ -66,16 +63,16 @@ if __name__ == '__main__':
                             l=0,pool=proc_pool,ssq=True,\
                             results=all_res)
         minimizer_kwargs = {"method": lstsq_wrap, "options":{"ssq": False}}#"bounds": sub_mp_bounds,
-        res = optimize.basinhopping(diff_fn, sub_mps, \
-                                    minimizer_kwargs=minimizer_kwargs,\
-                                    niter=10, T=80,\
-                                    callback=partial(save_results, results=min_res),\
-                                    stepsize=1)
+        # res = optimize.basinhopping(diff_fn, sub_mps, \
+        #                             minimizer_kwargs=minimizer_kwargs,\
+        #                             niter=10, T=80,\
+        #                             callback=partial(save_results, results=min_res),\
+        #                             stepsize=1)#T=80
         # accept_test=partial(check_bounds, bounds=sub_mp_bounds))
 #            minimizer_kwargs = {"method": "BFGS", "options": {"maxiter":100}}
-#        res = optimize.dual_annealing(diff_fn, bounds=sub_mp_bounds,\
-#                                          local_search_options=minimizer_kwargs,\
-#                                          maxiter=100)
+        res = optimize.dual_annealing(diff_fn, bounds=sub_mp_bounds,\
+                                          local_search_options=minimizer_kwargs,\
+                                          maxiter=100)
 #        res = optimize.least_squares(diff_fn, sub_mps, \
 #                        bounds=np.array(model().param_bounds)[mp_locs].T)
         res.keys_all = keys_all

@@ -209,7 +209,7 @@ mp_locs = []
 
 
 if run_fits['Recovery']:
-    mp_locs += list(range(17,22)) + [31,32] # [7]
+    mp_locs += list(range(17,22))# + [31,32] # [7]
 
     # I2/I1 Recovery
     keys_iin = [('1323431_8', 'Dataset A -140'), ('1323431_8',	'Dataset A -120'),\
