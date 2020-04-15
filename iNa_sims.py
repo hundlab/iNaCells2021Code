@@ -31,9 +31,9 @@ np.seterr(all='ignore')
 
 try: run_fits
 except NameError: 
-    run_fits = {'Activation':   False,\
-                'Inactivation': True,\
-                'Recovery':     True,\
+    run_fits = {'Activation':   True,\
+                'Inactivation': False,\
+                'Recovery':     False,\
                 'Tau Act':      False
                 }
 

@@ -15,7 +15,7 @@ class OHaraRudy_INa():
     num_params = 33
     param_bounds = [(-3,3)]*2 + \
                    [(-3,3)]*3 + \
-                   [(-20,20)]*2 + \
+                   [(-3,3)]*2 + \
                    [(-3,3), (-20,20), (-20,20)] + \
                    [(-3,3)]*2 + \
                    [(-20,20)]*2 + \
@@ -179,6 +179,8 @@ class OHaraRudy_INa():
 
         d_vals[8] = -1  / tau.thLp
 
+        if np.isinf(d_vals).any():
+            print("error")
         return d_vals
 
     def ddtcalc(self, vals, vOld):
@@ -204,6 +206,8 @@ class OHaraRudy_INa():
 
         d_vals[8] = (ss.hLssp-vals[8]) / tau.thLp
 
+        if np.isinf(d_vals).any():
+            print("error")
         return d_vals
     
     def getRevPot(self):

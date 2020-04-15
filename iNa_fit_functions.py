@@ -445,6 +445,7 @@ class SimResults():
         self.cache_args = None
         self.res_cache = None
     def __call__(self, model_parameters, keys):
+        model_parameters = np.array(model_parameters,dtype=float)
         if not self.cache_args is None:
             print(np.diff(self.cache_args, model_parameters))
         if self.cache_args is None or not np.array_equal(model_parameters, self.cache_args):
@@ -464,7 +465,7 @@ class SimResults():
 #sim_funcs is now a dict (pmid_fig, name) -> sim_func
 def calc_results(model_parameters_part, model_parameters_full, sim_funcs,\
                        data, mp_locs=None, pool=None,\
-                       exp_params=None):
+                       exp_params=None,error_fill=np.inf):
     if mp_locs is None:
         mp_locs = np.ones_like(model_parameters_full, dtype=bool)
     model_parameters_full[mp_locs] = model_parameters_part
@@ -480,9 +481,10 @@ def calc_results(model_parameters_part, model_parameters_full, sim_funcs,\
         try:
             vals_sims[key] = next(sims_iter)
         except Exception as e:
-#            print(e)
+            print(e)
+#            raise e
             sub_dat = data[key]
-            vals_sims[key] = np.inf*np.ones(sub_dat.shape[0])
+            vals_sims[key] = error_fill*np.ones(sub_dat.shape[0])
     
 #    with np.printoptions(precision=3):
 #        print(model_parameters_part)
@@ -521,7 +523,7 @@ def calc_diff_single(model_parameters_part, model_parameters_full, sim_func,\
 
 def calc_diff_multiple(model_parameters_part, model_parameters_full, sim_func,\
                        data, mp_locs=None, l=1, ssq=False, pool=None,\
-                       exp_params=None, keys=None, results=None):
+                       exp_params=None, keys=None, results=None,error_fill=np.inf):
     if mp_locs is None:
         mp_locs = np.ones_like(model_parameters_full, dtype=bool)
     model_parameters_full[mp_locs] = model_parameters_part
@@ -547,8 +549,8 @@ def calc_diff_multiple(model_parameters_part, model_parameters_full, sim_func,\
                 plt.plot(sub_dat[:,0], vals_sim)
                 plt.scatter(sub_dat[:,0], sub_dat[:,1])
         except Exception as e:
-#            print(e)
-            error += [np.inf]*sub_dat.shape[0]
+            print(e)
+            error += [error_fill]*sub_dat.shape[0]
     # if not pool is None:
     #     vals_sims_res = []
     #     for i in range(len(sim_func)):

@@ -29,7 +29,7 @@ from sklearn.preprocessing import minmax_scale
 from scipy import integrate
 from iNa_sims import sim_fs, datas, model_params_initial, mp_locs, model,\
     keys_all, exp_parameters, run_fits
-
+import os
 #import sys
 #sys.path.append('./models/build/Debug/')
 #import models
@@ -51,7 +51,8 @@ except NameError: fit_params = {}
 
 
 if __name__ == '__main__':
-    with Pool(processes=20) as proc_pool:
+    print("Running Pool with", os.cpu_count(), "processes")
+    with Pool() as proc_pool:
         mp_locs = list(set(mp_locs))
         sub_mps = model_params_initial[mp_locs]
         sub_mp_bounds = np.array(model().param_bounds)[mp_locs]
@@ -60,7 +61,7 @@ if __name__ == '__main__':
 
         diff_fn = partial(calc_diff, model_parameters_full=model_params_initial,\
                         mp_locs=mp_locs, sim_func=sim_fs, data=datas,\
-                            l=0,pool=proc_pool,ssq=True,\
+                            l=0,ssq=True,pool=proc_pool,\
                             results=all_res)
         minimizer_kwargs = {"method": lstsq_wrap, "options":{"ssq": False}}#"bounds": sub_mp_bounds,
         # res = optimize.basinhopping(diff_fn, sub_mps, \
