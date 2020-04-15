@@ -245,7 +245,7 @@ class ModelWrapper():
         vOld = self.flat_voltages[loc]
         return vOld
     def __call__(self, t, vals):
-        if self.call_count > 200000:
+        if self.call_count > 20000:
             print("Error too many calls", self.call_count)
             raise ValueError
         self.call_count += 1
@@ -445,6 +445,7 @@ class SimResults():
         self.cache_args = None
         self.res_cache = None
     def __call__(self, model_parameters, keys):
+        model_parameters = np.array(model_parameters, dtype=float)
         if not self.cache_args is None:
             print(np.diff(self.cache_args, model_parameters))
         if self.cache_args is None or not np.array_equal(model_parameters, self.cache_args):
