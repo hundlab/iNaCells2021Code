@@ -445,7 +445,13 @@ class SimResults():
         self.cache_args = None
         self.res_cache = None
     def __call__(self, model_parameters, keys):
-        if self.cache_args is None or np.array_equal(model_parameters, self.cache_args):
+        model_parameters = np.array(model_parameters)
+        print(self.cache_args == model_parameters)
+        if self.cache_args is None or not np.array_equal(model_parameters, self.cache_args):
+            print(model_parameters)
+            print(self.cache_args)
+            print(self.cache_args == model_parameters)
+            print('------------------------------------')
             self.cache_args = model_parameters
             self.res_cache = self.func(model_parameters, **self.keywords)
             

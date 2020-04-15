@@ -24,11 +24,13 @@ if __name__ == '__main__':
     iNa_fit_functions.plot2 = False #diff
     iNa_fit_functions.plot3 = False #tau
     
-    model_name = './ina_ohara_{cdate.month:02d}{cdate.day:02d}_{cdate.hour:02d}{cdate.minute:02d}'
+    model_name = './ina_ohara_\
+{cdate.month:02d}{cdate.day:02d}_{cdate.hour:02d}{cdate.minute:02d}\
+.pickle'
     model_name = model_name.format(cdate=datetime.datetime.now())
 
 
-    with Pool(processes=20) as proc_pool:
+    with Pool() as proc_pool:
         
         calc_fn = partial(calc_results, model_parameters_full=model_params_initial,\
                         mp_locs=mp_locs, sim_funcs=sim_fs, data=datas,\
