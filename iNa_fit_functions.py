@@ -254,15 +254,18 @@ class ModelWrapper():
         return ddt_vals
     def jac(self, t, vals):
         vOld = self.getvOld(t)
-        ddy_vals = self.run_model.ddycalc(vOld)
-        return np.diag(ddy_vals)
+        return self.run_model.jac(vOld)
 
 def scipySolver(flat_durs, flat_voltages, run_model, solver, dt=None):
     max_step = np.min(flat_durs[flat_durs > 0])/2
     wrap_run_model = ModelWrapper(flat_durs, flat_voltages, run_model)
     
+    if run_model.jac(-80) is not None:
+        jac = wrap_run_model.jac
+    else:
+        jac = None
     res = solver(wrap_run_model, (0,wrap_run_model.t_end), run_model.state_vals,
-                 first_step=dt, max_step = max_step, jac=wrap_run_model.jac)#, vectorized=True)
+                 first_step=dt, max_step = max_step, jac=jac)#, vectorized=True)
     if not res.success:
         raise ValueError
 

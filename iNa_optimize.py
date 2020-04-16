@@ -51,7 +51,7 @@ except NameError: fit_params = {}
 
 
 if __name__ == '__main__':
-    with Pool(processes=20) as proc_pool:
+    with Pool() as proc_pool:
         mp_locs = list(set(mp_locs))
         sub_mps = model_params_initial[mp_locs]
         sub_mp_bounds = np.array(model().param_bounds)[mp_locs]

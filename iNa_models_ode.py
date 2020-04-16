@@ -156,7 +156,7 @@ class OHaraRudy_INa():
 
         return tau, ss
     
-    def ddycalc(self, vOld):
+    def jac(self, vOld):
         d_vals = np.zeros(9)
         
         tau, _ = self.calc_taus_ss(vOld)
@@ -179,7 +179,7 @@ class OHaraRudy_INa():
 
         d_vals[8] = -1  / tau.thLp
 
-        return d_vals
+        return np.diag(d_vals)
 
     def ddtcalc(self, vals, vOld):
         d_vals = np.zeros_like(vals)
@@ -250,66 +250,187 @@ class OHaraRudy_INa():
             (INaL if self.retOptions['INaL'] else 0)
 
     def update(self, vOld, dt):
-        ddt_vals = self.ddtcalc(self.state_vals, vOld)
-        self.state_vals += dt*ddt_vals
+        m,hf,hs,j,hsp,jp,mL,hL,hLp = self.state_vals
+        tau, ss = self.calc_taus_ss(vOld)
+        
+        m = ss.mss - (ss.mss - m) * np.exp(-dt / tau.tm);
+        hf = ss.hss - (ss.hss - hf) * np.exp(-dt / tau.thf);
+        hs = ss.hss - (ss.hss - hs) * np.exp(-dt / tau.ths);
+        j = ss.jss - (ss.jss - j) * np.exp(-dt / tau.tj);
+
+        hsp = ss.hssp - (ss.hssp - hsp) * np.exp(-dt / tau.thsp);
+        jp = ss.jss - (ss.jss - jp) * np.exp(-dt / tau.tjp);
+
+        mL = ss.mLss - (ss.mLss - mL) * np.exp(-dt / tau.tmL);
+        hL = ss.hLss - (ss.hLss - hL) * np.exp(-dt / tau.thL);
+        hLp = ss.hLssp - (ss.hLssp - hLp) * np.exp(-dt / tau.thLp);
+
+
+        self.state_vals = m,hf,hs,j,hsp,jp,mL,hL,hLp
         return self.calcCurrent(self.state_vals, vOld)
         
+
+#10.1161/CIRCULATIONAHA.112.105320 P glynn
+class Koval_ina:
+    num_params = 22
+    param_bounds = []
+    
+    RGAS = 8314.4
+    FDAY = 96485
+
+    def __init__(self, gNaFactor = 0, 
+                 P1a1Factor=0, P2a1Factor=0, P1a4Factor=0, 
+                 P1a5Factor=0, P2a5Factor=0, P1b1Factor=0, 
+                 P2b1Factor=0, P1b2Factor=0, P2b2Factor=0, 
+                 P1b3Factor=0, P2b3Factor=0, P1b5Factor=0, 
+                 P2b5Factor=0, P1a6Factor=0, P1b6Factor=0, 
+                 P1a7Factor=0, P1b7Factor=0, P1a8Factor=0, 
+                 P1b8Factor=0, P1a9Factor=0, P1b9Factor=0, 
+                 TEMP = 310.0, naO = 140.0, naI = 8.35504003):
+
+        self.P1a1 = np.exp(P1a1Factor)*7.5207
+        self.P2a1 = np.exp(P2a1Factor)*0.1027
+        self.P1a4 = np.exp(P1a4Factor)*0.188495
+        self.P1a5 = np.exp(P1a5Factor)*7.0e-7
+        self.P2a5 = np.exp(P2a5Factor)*7.7
+        self.P1b1 = np.exp(P1b1Factor)*0.1917
+        self.P2b1 = np.exp(P2b1Factor)*20.3
+        self.P1b2 = np.exp(P1b2Factor)*0.2
+        self.P2b2 = P2b2Factor+2.5
+        self.P1b3 = np.exp(P1b3Factor)*0.22
+        self.P2b3 = P2b3Factor+7.5
+        self.P1b5 = np.exp(P1b5Factor)*0.0108469
+        self.P2b5 = np.exp(P2b5Factor)*2e-5
+        self.P1a6 = np.exp(P1a6Factor)*1000.0
+        self.P1b6 = np.exp(P1b6Factor)*6.0448e-3
+        self.P1a7 = np.exp(P1a7Factor)*1.05263e-5
+        self.P1b7 = np.exp(P1b7Factor)*0.02
+        self.P1a8 = np.exp(P1a8Factor)*4.0933e-13
+        self.P1b8 = np.exp(P1b8Factor)*9.5e-4
+        self.P1a9 = np.exp(P1a9Factor)*8.2
+        self.P1b9 = np.exp(P1b9Factor)*0.022
+        self.gNa  = np.exp(gNaFactor)*7.35
+
+        self.recArrayNames = pd.Index(["C1","C2","C3",
+                                       "IC2","IC3","IF",
+                                       "IM1","IM2",
+                                       "LC1","LC2","LC3",
+                                       "O", "LO",
+                                       "OB", "LOB"])
+        self.state_vals = pd.Series([0.0003850597267,0.02639207662,0.7015088787,
+                                     0.009845083654,0.2616851145,0.0001436395221,
+                                     3.913769904e-05,3.381242427e-08,
+                                     1.659002962e-13,1.137084204e-11,3.02240205e-10,
+                                     9.754706096e-07,4.202747013e-16,
+                                     0,0],
+                                    index=self.recArrayNames)
+
+        self.recArray = pd.DataFrame(columns=self.recArrayNames)
+
+        self.retOptions = {'G': True, 'INa': True, 'INaL': True,\
+                                 'Open': True, 'RevPot': True}
+        self.TEMP = TEMP
+        self.RanolazineConc = 0
+        self.naO = naO
+        self.naI = naI
+
+    def calc_alphas_betas(self, vOld):
+        exp = np.exp
+        a = np.zeros(10)
+        b = np.zeros(10)
         
-    # def update(self, vOld, dt, ret=[True]*3):
-    #     ena = self.getRevPot()
+        a[1] = self.P1a1/((self.P2a1*exp(-(vOld+2.5)/17))
+                        + 0.20*exp(-(vOld+2.5)/150))
+        a[2] = self.P1a1/((self.P2a1*exp(-(vOld+2.5)/15))
+                        + 0.23*exp(-(vOld+2.5)/150))
+        a[3] = self.P1a1/((self.P2a1*exp(-(vOld+2.5)/12))
+                        + 0.25*exp(-(vOld+2.5)/150))
+        a[4] = 1.0/(self.P1a4*exp(-(vOld+7.0)/16.6) + 0.393956)
+        a[5] = self.P1a5*exp(-(vOld+7)/self.P2a5) #self.P1a5*exp(-Vm/self.P2a5)
+        a[6] = a[4]/self.P1a6
+        a[7] = self.P1a7*a[4]
+        a[8] = self.P1a8
+        a[9] = self.RanolazineConc*self.P1a9
 
-    #     mss = 1.0 / (1.0 + np.exp((-(vOld + 39.57)) / self.mss_tau));
-    #     tm = 1.0 / (self.tm_mult1 * np.exp((vOld + 11.64) / self.tm_tau1) +
-    #                        self.tm_mult2 * np.exp(-(vOld + 77.42) / self.tm_tau2));
+        b[1] = self.P1b1*exp(-(vOld+2.5)/self.P2b1)
+        b[2] = self.P1b2*exp(-(vOld-self.P2b2)/self.P2b1)
+        b[3] = self.P1b3*exp(-(vOld-self.P2b3)/self.P2b1)
+        b[5] = self.P1b5 + self.P2b5*(vOld+7.0)
+        b[4] = (a[3]*a[4]*a[5])/(b[3]*b[5])
+        b[6] = self.P1b6*a[5]
+        b[7] = self.P1b7*a[5]
+        b[8] = self.P1b8
+        b[9] = self.P1b9
+        
+        return a, b
 
-    #     self.m = mss - (mss - self.m) * np.exp(-dt / tm);
+    def ddtcalc(self, vals, vOld):
+        C1,C2,C3,
+        IC2,IC3,IF,
+        IM1,IM2,
+        LC1,LC2,LC3,
+        O,LO,
+        OB,LOB = vals
+        
+        d_vals = np.zeros_like(vals)
+        
+        dC1  = (a[5]*IF+b[3]*O+b[8]*LC1+a[2]*C2   -(b[5]+a[3]+a[8]+b[2])*C1)
+        dC2  = (a[5]*IC2+b[2]*C1+b[8]*LC2+a[1]*C3 -(b[5]+a[2]+a[8]+b[1])*C2)
+        dC3  = (a[5]*IC3+b[1]*C2+b[8]*LC3       -(b[5]+a[1]+a[8])*C3)
+        dIC2 = (b[2]*IF+b[5]*C2+a[1]*IC3        -(a[2]+a[5]+b[1])*IC2)
+        dIC3 = (b[1]*IC2+b[5]*C3              -(a[1]+a[5])*IC3)
+        dIF  = (b[6]*IM1+a[4]*O+b[5]*C1+a[2]*IC2  -(a[6]+b[4]+a[5]+b[2])*IF)
+        dIM1 = (b[7]*IM2+a[6]*IF              -(a[7]+b[6])*IM1)
+        dIM2 = (a[7]*IM1                    -(b[7])*IM2)
+        dLC1 = (a[8]*C1+b[3]*LO+a[2]*LC2        -(b[8]+a[3]+b[2])*LC1)
+        dLC2 = (a[8]*C2+b[2]*LC1+a[1]*LC3       -(b[8]+a[2]+b[1])*LC2)
+        dLC3 = (b[1]*LC2+a[8]*C3              -(a[1]+b[8])*LC3)
+        dO   = (b[9]*OB+b[8]*LO+a[3]*C1+b[4]*IF   -(a[9]+a[8]+b[3]+a[4])*O)
+        dLO  = (a[8]*O+b[9]*LOB+a[3]*LC1        -(b[8]+a[9]+b[3])*LO)
+        dOB  = (a[9]*O                      -(b[9])*OB)
+        dLOB = (a[9]*LO                     -(b[9])*LOB)
 
-    #     hss = 1.0 / (1 + np.exp((vOld + 82.90) / self.hss_tau));
-    #     thf = 1.0 / (self.thf_mult1 * np.exp(-(vOld + 1.196) / self.thf_tau1) +
-    #                         self.thf_mult2 * np.exp((vOld + 0.5096) / self.thf_tau2));
-    #     ths = 1.0 / (self.ths_mult1 * np.exp(-(vOld + 17.95) / self.ths_tau1) +
-    #                         self.ths_mult2 * np.exp((vOld + 5.730) / self.ths_tau2));
-    #     Ahf = 0.99*self.Ahf_mult;
-    #     Ahs = 1.0 - Ahf;
-    #     self.hf = hss - (hss - self.hf) * np.exp(-dt / thf);
-    #     self.hs = hss - (hss - self.hs) * np.exp(-dt / ths);
-    #     h = Ahf * self.hf + Ahs * self.hs;
+        d_vals = dC1,dC2,dC3,dIC2, dIC3, dIF, dIM1, dIM2, dLC1, dLC2, dLC3, dO, dLO, dOB, dLOB
+        return d_vals
 
-    #     jss = hss;
-    #     tj = self.tj_baseline + 1.0 / (self.tj_mult1 * np.exp(-(vOld + 100.6) / self.tj_tau1) +
-    #                                self.tj_mult2 * np.exp((vOld + 0.9941) / self.tj_tau2));
-    #     self.j = jss - (jss - self.j) * np.exp(-dt / tj);
-    #     hssp = 1.0 / (1 + np.exp((vOld + 89.1) / self.hssp_tau));
-    #     thsp = self.tssp_mult * ths;
+    def ddycalc(self, vOld):
+        pass
+    
+    def getRevPot(self):
+        return self.RGAS * self.TEMP / self.FDAY * log((self.naO) / (self.naI))
 
-    #     self.hsp = hssp - (hssp - self.hsp) * np.exp(-dt / thsp);
-    #     hp = Ahf * self.hf + Ahs * self.hsp;
-    #     tjp = self.tjp_mult * tj;
+    def calcCurrent(self, vals, vOld, ret=[True]*3, setRecArray=True):
+        vals = np.array(vals)
+        if len(vals.shape) == 1:
+            vals.shape = (9,-1)
+        elif vals.shape[0] != 9 and vals.shape[-1] == 9:
+            vals = vals.T
+            
+        C1,C2,C3,
+        IC2,IC3,IF,
+        IM1,IM2,
+        LC1,LC2,LC3,
+        O,LO,
+        OB,LOB = vals
+ 
+        if setRecArray:
+            self.recArray = self.recArray.append(pd.DataFrame(vals.T, columns=self.recArrayNames))
 
-    #     self.jp = jss - (jss - self.jp) * np.exp(-dt / tjp);
+        
+        ENa = self.getRevPot()
+        oprob = (O if self.retOptions['INa'] else 0)+\
+                (LO if self.retOptions['INaL'] else 0)
 
-    #     fINap = (1.0 / (1.0 + self.KmCaMK / self.CaMKa));
-    #     oprob = self.m * self.m * self.m * ((1.0 - fINap) * h * self.j + fINap * hp * self.jp)
-    #     INa = np.prod(np.array([self.GNa, oprob, (vOld - ena)])[ret]);
+        INa = (self.gNa if self.retOptions['G'] else 1) *\
+                (oprob if self.retOptions['Open'] else 1) *\
+                ((vOld - ena) if self.retOptions['RevPot'] else 1);
+        return INa
 
-    #     mLss = 1.0 / (1.0 + np.exp((-(vOld + 42.85)) / self.mLss_tau));
-    #     tmL = tm;
-    #     self.mL = mLss - (mLss - self.mL) * np.exp(-dt / tmL);
-    #     hLss = 1.0 / (1.0 + np.exp((vOld + 87.61) / self.hLss_tau));
-    #     thL = self.thL_baseline;
-    #     self.hL = hLss - (hLss - self.hL) * np.exp(-dt / thL);
-    #     hLssp = 1.0 / (1.0 + np.exp((vOld + 93.81) / self.hLssp_tau));
-    #     thLp = self.thLp_mult * thL;
-    #     self.hLp = hLssp - (hLssp - self.hLp) * np.exp(-dt / thLp);
+    def update(self, vOld, dt):
+        d_vals = self.ddtcalc(self.state_vals, vOld)
+        self.state_vals += dt*d_vals
+        INa = self.calcCurrent(self.state_vals, vOld, setRecArray=True):
+        return INa
 
 
-    #     fINaLp = (1.0 / (1.0 + self.KmCaMK / self.CaMKa));
-    #     loprob = self.mL * ((1.0 - fINaLp) * self.hL + fINaLp * self.hLp)
-
-    #     INaL = np.prod(np.array([self.GNaL, loprob, (vOld - ena)])[ret]);
-
-    #     self.recArray.append([self.m, self.hf, self.hs, self.j, self.hsp,\
-    #                           self.jp, self.mL, self.hL, self.hLp])
-
-    #     return INa+INaL
 
