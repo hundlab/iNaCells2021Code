@@ -262,7 +262,7 @@ def scipySolver(flat_durs, flat_voltages, run_model, solver, dt=None):
     wrap_run_model = ModelWrapper(flat_durs, flat_voltages, run_model)
     
     res = solver(wrap_run_model, (0,wrap_run_model.t_end), run_model.state_vals,
-                 first_step=dt, max_step = max_step, jac=wrap_run_model.jac)#, vectorized=True)
+                 first_step=dt, max_step = max_step, jac=wrap_run_model.jac, vectorized=True)
     if not res.success:
         raise ValueError
 

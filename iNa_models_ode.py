@@ -120,6 +120,7 @@ class OHaraRudy_INa():
                                  'Open': True, 'RevPot': True}
             
 
+    
     def calc_taus_ss(self, vOld):
         tau = ObjDict()
         ss = ObjDict()
@@ -157,7 +158,8 @@ class OHaraRudy_INa():
         return tau, ss
     
     def ddycalc(self, vOld):
-        d_vals = np.zeros(9)
+        vOld = np.array(vOld,ndmin=1)
+        d_vals = np.squeeze(np.zeros((9,len(vOld))))
         
         tau, _ = self.calc_taus_ss(vOld)
         
