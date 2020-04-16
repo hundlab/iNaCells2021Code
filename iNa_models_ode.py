@@ -155,6 +155,7 @@ class OHaraRudy_INa():
         ss.hLssp = 1.0 / (1.0 + np.exp((vOld + 93.81) / self.hLssp_tau));
         tau.thLp = self.thLp_mult * tau.thL;
 
+        tau.__dict__ = {key: min(max(value, 1e-8), 1e20) for key,value in tau.__dict__.items()}
         return tau, ss
     
     def ddycalc(self, vOld):
@@ -181,7 +182,7 @@ class OHaraRudy_INa():
 
         d_vals[8] = -1  / tau.thLp
 
-        np.clip(d_vals, a_min=-1e20, a_max=None, out=d_vals)
+#        np.clip(d_vals, a_min=-1e15, a_max=None, out=d_vals)
         return d_vals
 
     def ddtcalc(self, vals, vOld):
@@ -207,7 +208,7 @@ class OHaraRudy_INa():
 
         d_vals[8] = (ss.hLssp-vals[8]) / tau.thLp
 
-        np.clip(d_vals, a_min=-1e20, a_max=1e20, out=d_vals)
+#        np.clip(d_vals, a_min=-1e15, a_max=1e15, out=d_vals)
         return d_vals
     
     def getRevPot(self):

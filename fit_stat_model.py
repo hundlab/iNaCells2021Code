@@ -42,5 +42,6 @@ if __name__ == '__main__':
         
         made_model = make_model(calc_fn, keys_all, datas, sub_mps, model)
         S = pymc.MCMC(made_model, db='pickle', dbname=db_path)
-        S.sample(iter=10, burn=5, thin=1)
+        S.sample(iter=1000, burn=300, thin=1)
+        S.db.close()
         #pymc.Matplot.plot(S)
