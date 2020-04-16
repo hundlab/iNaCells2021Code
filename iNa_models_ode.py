@@ -179,8 +179,7 @@ class OHaraRudy_INa():
 
         d_vals[8] = -1  / tau.thLp
 
-        if np.isinf(d_vals).any():
-            print("error")
+        np.clip(d_vals, a_min=-1e20, a_max=None, out=d_vals)
         return d_vals
 
     def ddtcalc(self, vals, vOld):
@@ -206,8 +205,7 @@ class OHaraRudy_INa():
 
         d_vals[8] = (ss.hLssp-vals[8]) / tau.thLp
 
-        if np.isinf(d_vals).any():
-            print("error")
+        np.clip(d_vals, a_min=-1e20, a_max=1e20, out=d_vals)
         return d_vals
     
     def getRevPot(self):
