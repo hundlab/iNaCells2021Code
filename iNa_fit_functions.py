@@ -245,7 +245,7 @@ class ModelWrapper():
         vOld = self.flat_voltages[loc]
         return vOld
     def __call__(self, t, vals):
-        if self.call_count > 200000:
+        if self.call_count > 20000:
             print("Error too many calls", self.call_count)
             raise ValueError
         self.call_count += 1
@@ -265,9 +265,10 @@ def scipySolver(flat_durs, flat_voltages, run_model, solver, dt=None):
     else:
         jac = None
     res = solver(wrap_run_model, (0,wrap_run_model.t_end), run_model.state_vals,
-                 first_step=dt, max_step = max_step, jac=jac)#, vectorized=True)
+                 first_step=dt, max_step = max_step, jac=jac, vectorized=True)
     if not res.success:
-        raise ValueError
+#        print('Solve IVP Failure')
+        raise ValueError(res.message)
 
 #    print(res)
     times = res.t
@@ -448,13 +449,14 @@ class SimResults():
         self.cache_args = None
         self.res_cache = None
     def __call__(self, model_parameters, keys):
-        model_parameters = np.array(model_parameters)
-        print(self.cache_args == model_parameters)
+        model_parameters = np.array(model_parameters, dtype=float)
+#        if not self.cache_args is None:
+#            print(np.abs(self.cache_args- model_parameters))
         if self.cache_args is None or not np.array_equal(model_parameters, self.cache_args):
-            print(model_parameters)
-            print(self.cache_args)
-            print(self.cache_args == model_parameters)
-            print('------------------------------------')
+            # print(model_parameters)
+            # print(self.cache_args)
+            # print(self.cache_args == model_parameters)
+            # print('------------------------------------')
             self.cache_args = model_parameters
             self.res_cache = self.func(model_parameters, **self.keywords)
             
@@ -467,26 +469,27 @@ class SimResults():
 #sim_funcs is now a dict (pmid_fig, name) -> sim_func
 def calc_results(model_parameters_part, model_parameters_full, sim_funcs,\
                        data, mp_locs=None, pool=None,\
-                       exp_params=None):
+                       exp_params=None,error_fill=np.inf):
     if mp_locs is None:
         mp_locs = np.ones_like(model_parameters_full, dtype=bool)
     model_parameters_full[mp_locs] = model_parameters_part
     
     vals_sims = {}
-    if pool is None:
-        for key, sim_func in sim_funcs:
-            vals_sims[key] = sim_func(model_parameters_full)
-    else:
-        vals_sims_res = {}
-        for key, sim_func in sim_funcs.items():
-            vals_sims_res[key] = pool.apply_async(sim_func, (model_parameters_full,))
-        vals_sims = {}
-        for key, res in vals_sims_res.items():
-            try:
-                vals_sims[key] = res.get()
-            except:
-                vals_sims[key] = np.inf*np.ones_like(data[key].shape[0])
-
+    sims_iters = {}
+    for key, sim_func in sim_funcs.items():
+        sims_iter = sim_func(model_parameters_full, pool=pool)
+        sims_iters[key] = sims_iter
+        next(sims_iter)
+    for key in sim_funcs:
+        sims_iter = sims_iters[key]
+        try:
+            vals_sims[key] = next(sims_iter)
+        except Exception as e:
+            print(e)
+#            raise e
+            sub_dat = data[key]
+            vals_sims[key] = error_fill*np.ones(sub_dat.shape[0])
+    
 #    with np.printoptions(precision=3):
 #        print(model_parameters_part)
     return vals_sims
@@ -524,7 +527,7 @@ def calc_diff_single(model_parameters_part, model_parameters_full, sim_func,\
 
 def calc_diff_multiple(model_parameters_part, model_parameters_full, sim_func,\
                        data, mp_locs=None, l=1, ssq=False, pool=None,\
-                       exp_params=None, keys=None, results=None):
+                       exp_params=None, keys=None, results=None,error_fill=np.inf):
     if mp_locs is None:
         mp_locs = np.ones_like(model_parameters_full, dtype=bool)
     model_parameters_full[mp_locs] = model_parameters_part
@@ -547,11 +550,12 @@ def calc_diff_multiple(model_parameters_part, model_parameters_full, sim_func,\
                     plt.figure("Overall")
                 else:
                     plt.figure(exp_params.loc[key, 'Sim Group'])
-                plt.plot(sub_dat[:,0], vals_sim)
+                plt.plot(sub_dat[:,0], vals_sim, label=key)
                 plt.scatter(sub_dat[:,0], sub_dat[:,1])
+                plt.legend()
         except Exception as e:
-#            print(e)
-            error += [np.inf]*sub_dat.shape[0]
+            print(e)
+            error += [error_fill]*sub_dat.shape[0]
     # if not pool is None:
     #     vals_sims_res = []
     #     for i in range(len(sim_func)):

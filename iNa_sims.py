@@ -7,13 +7,14 @@ Created on Mon Apr 13 09:09:01 2020
 """
 
 #from iNa_models import Koval_ina, OHaraRudy_INa
-from iNa_models_ode import OHaraRudy_INa
+from iNa_models_ode import OHaraRudy_INa, Koval_ina
 from scripts import load_data_parameters, all_data
 from iNa_fit_functions import normalize2prepulse, setup_sim, \
 calc_diff, peakCurr, normalized2val, calcExpTauInact, monoExp, biExp,\
 calcExpTauAct, biExp_params, monoExp_params
 from setup_sim_functions import setupSimExp, normalizeToBaseline, normalizeToFirst,\
-    resort, minNorm_data, minNorm
+    resort, minNorm_data, minNorm, minMaxNorm, func_norm, func_norm_data
+from iNa_model_setup import model, mp_locs, sub_mps, sub_mp_bounds, dt, run_fits
 
 
 import numpy as np
@@ -29,18 +30,6 @@ from scipy import integrate
 
 np.seterr(all='ignore')
 
-try: run_fits
-except NameError: 
-    run_fits = {'Activation':   False,\
-                'Inactivation': True,\
-                'Recovery':     True,\
-                'Tau Act':      False
-                }
-
-model = OHaraRudy_INa#models.iNa.OharaRudy_INa#OHaraRudy_INa
-retOptions  = model().retOptions
-dt = 0.05
-
 exp_parameters_gating, data_gating = load_data_parameters('/params old/INa_old.xlsx','gating', data=all_data)
 exp_parameters_iv, data_iv = load_data_parameters('/params old/INa_old.xlsx','iv_curve', data=all_data)
 
@@ -48,29 +37,15 @@ exp_parameters = exp_parameters_gating.append(exp_parameters_iv, sort=False)
 data_gating.update(data_iv)
 data = data_gating
 
-#fits_results_joint = pickle.load(open('./fits_res_joint_ohara_0306.pkl','rb'))
-#res = fits_results_joint['group']
-
-model_params_initial = np.zeros(model.num_params)#np.array([ 0.        ,  0.        ,  1.49431475, -1.84448536, -1.21581823,
-#        0.04750437,  0.09809738,  0.        ,  0.        ,  0.        ,
-#        0.        ,  0.        ,  0.        ,  0.        ,  0.        ,
-#        0.        ,  0.        ,  1.487     , -1.788     , -0.254     ,
-#       -3.423     ,  4.661     ,  0.        ,  0.        ,  0.        ,
-#        0.        ,  0.        ,  0.        ,  0.        ])#np.zeros(model().num_params)
-#model_params_initial[[2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21]] = [ 0.505, -0.533, -0.286 , 2.558 , 0.92 ,  0.333 ,14.476 , 2.169 , 1.876, -0.487
-# , 3.163 , 3.814 , 2.584 ,-0.772 ,-0.129 , 0.528, -0.868 , 0.319 ,-3.578 , 0.149]
-
 
 sim_fs = {}
 datas = {}
 keys_all = []
 
 solver = partial(integrate.solve_ivp, method='BDF')
-mp_locs = []
 
 
 if run_fits['Recovery']:
-    mp_locs += [7] + list(range(17,22))# + [31,32] # [7]
 
     # I2/I1 Recovery
     keys_iin = [('1323431_8', 'Dataset A -140'), ('1323431_8',	'Dataset A -120'),\
@@ -89,7 +64,8 @@ if run_fits['Recovery']:
                 process=normalize2prepulse,\
                 dt=dt,\
                 post_process=None,
-                setup_sim_args={'sim_args':{'solver': solver}})
+                setup_sim_args={'sim_args':{'solver': solver},
+                                'hold_dur':50})
 
     # recovery normalized to preprepulse
     keys_iin = [\
@@ -116,7 +92,6 @@ if run_fits['Recovery']:
 
 
 if run_fits['Inactivation']:
-    mp_locs += list(range(7,12)) + [16,30] #7,17
 
     # inactivation normalized to no prepulse
     keys_iin = [('7971163_4', 'Dataset 32ms'), ('7971163_4', 'Dataset 64ms'),\
@@ -158,24 +133,25 @@ if run_fits['Inactivation']:
                 post_process=normalizeToFirst,
                 setup_sim_args={'sim_args':{'solver': solver}})
 
-    # #tau inactivation
-    # keys_iin = [('8928874_8', 'Dataset E fresh'), ('8928874_8',	'Dataset E day 1'),\
-    #             ('8928874_8',	'Dataset E day 3'), ('8928874_8',	'Dataset E day 5')]#,\
-    # #            ('1323431_5',	'Dataset B fast'),\
-    # #            ('21647304_2', 'Dataset C Adults'), ('21647304_2', 'Dataset C Pediactric')]
-    # keys_all.append(keys_iin)
+    #tau inactivation
+    keys_iin = [('8928874_8', 'Dataset E fresh'), ('8928874_8',	'Dataset E day 1'),\
+                ('8928874_8',	'Dataset E day 3'), ('8928874_8',	'Dataset E day 5')]#,\
+    #            ('1323431_5',	'Dataset B fast'),\
+    #            ('21647304_2', 'Dataset C Adults'), ('21647304_2', 'Dataset C Pediactric')]
+    keys_all.append(keys_iin)
     
-    # setupSimExp(sim_fs=sim_fs,\
-    #             datas=datas,\
-    #             data=data,\
-    #             exp_parameters=exp_parameters,\
-    #             keys_iin=keys_iin,\
-    #             model=model,\
-    #             process=partial(calcExpTauInact,func=biExp,x0=biExp_params,\
-    #                   keep=1,calc_dur=1),\
-    #             dt=dt,\
-    #             post_process=None,
-    #             setup_sim_args={'sim_args':{'solver': solver}})
+    setupSimExp(sim_fs=sim_fs,\
+                datas=datas,\
+                data=data,\
+                exp_parameters=exp_parameters,\
+                keys_iin=keys_iin,\
+                model=model,\
+                process=partial(calcExpTauInact,func=biExp,x0=biExp_params,\
+                      keep=0,calc_dur=1),\
+                dt=dt,\
+                post_process=partial(func_norm, func=np.log),
+                process_data=partial(func_norm_data, func=np.log),
+                setup_sim_args={'sim_args':{'solver': solver}})
 
     # #tau inactivation normalized to first
     # keys_iin = [('1323431_6',	'Dataset -80'), ('1323431_6',	'Dataset -100')]
@@ -208,21 +184,21 @@ if run_fits['Inactivation']:
     #                                         'Open': True, 'RevPot': True},
     #                               'dt' : dt,
     #                               'process' : process,
-    #                               'post_process' : resort}}
+    #                               'post_process' : partial(func_norm, 
+    #                                                        func=lambda vals: np.log(resort(vals)))}}
     
     # for i in range(0,len(keys_iin),2):
     #     keyf = keys_iin[i]
     #     keys = keys_iin[i+1]
-    #     key_dataf = data[keyf]
-    #     key_datas = data[keys]
+    #     key_dataf = func_norm_data(data[keyf], np.log)
+    #     key_datas = func_norm_data(data[keys], np.log)
     #     key_exp_p = exp_parameters.loc[keyf]
-    #     voltages, durs, sim_f = setup_sim(model, key_dataf, key_exp_p, process, dt=dt, **setup_sim_args)
+    #     voltages, durs, sim_f = setup_sim(model, key_dataf, key_exp_p, **setup_sim_args)
     
-    #     sim_fs.append(sim_f)
-    #     datas.append(np.concatenate((key_dataf, key_datas)))
+    #     sim_fs[keyf] = sim_f
+    #     datas[keyf] = np.concatenate((key_dataf, key_datas))
 
 if run_fits['Activation']:
-    mp_locs += list(range(2,7)) + [29]#list(range(2,5))
 
     # activation normalized to driving force
     keys_iin = [('1323431_2',	'Dataset'),\
@@ -239,7 +215,7 @@ if run_fits['Activation']:
                 model=model,
                 process=peakCurr,
                 dt=dt,
-                post_process=None,
+                post_process=minMaxNorm,
                 setup_sim_args={'sim_args':{'retOptions': 
                                 {'G': False, 'INa': True, 'INaL': False,
                                  'Open': True, 'RevPot': False},
@@ -304,6 +280,4 @@ if run_fits['Tau Act']:
                                              bounds=([0]*len(sub_mps), [np.inf]*len(sub_mps)))
             fit_results['Group Tau Act'] = res
 
-mp_locs = list(set(mp_locs))
-sub_mps = model_params_initial[mp_locs]
-sub_mp_bounds = np.array(model().param_bounds)[mp_locs]
+

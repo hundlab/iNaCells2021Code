@@ -10,9 +10,17 @@ import json
 from glob import iglob
 import pandas as pd
 import numpy as np
+import sys
 
+if len(sys.argv) > 1:
+    data_root = sys.argv[1]
+else:
+    data_root = 'C:/Users/grat05/OneDrive for Business/Data'#'./Data'#
+if len(sys.argv) > 2:
+    out_dir = sys.argv[2]
+else:
+    out_dir = './'
 
-data_root = 'C:/Users/grat05/OneDrive for Business/Data'#'./Data'#
 
 def load_all_data(data_root = data_root):
     files = [glb.replace('\\','/') for glb in iglob(data_root+'/data/*/*')]
@@ -59,9 +67,14 @@ def load_data_parameters(filename, sheet_name, data_root = data_root, data = all
     #set unset duration
     data_parameters.loc[data_parameters['duration (ms)'].isnull(),'duration (ms)'] = 100
 
+    sub_data = extract_sub_data(data_parameters.index, data=data)
+
+    return data_parameters, sub_data
+
+def extract_sub_data(data_keys, data=all_data):
     #extract sub_data
     sub_data = {}
-    for idx in data_parameters.index:
+    for idx in data_keys:
         datasets = data[idx[0]]['datasetColl']
         for dataset in datasets:
             if dataset['name'] == idx[1]:
@@ -70,5 +83,5 @@ def load_data_parameters(filename, sheet_name, data_root = data_root, data = all
                 order = np.argsort(temp_data[:,0])
                 sub_data[idx] = temp_data[order,:]
                 break
+    return sub_data
 
-    return data_parameters, sub_data

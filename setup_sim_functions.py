@@ -70,11 +70,26 @@ def minMaxNorm_data(data, feature_range=(0, 1)):
     minmax_scale(data[:,1], copy=False)
     return data
 
+def func_norm(vals, func, **kwargs):
+    return func(vals)
+
+def func_norm_data(data, func):
+    data = np.copy(data)
+    data[:,1] = func(data[:,1])
+    return data
+
 def minNorm(vals, **kwargs):
-    return vals/np.abs(np.min(vals))
+    normed = vals/np.abs(np.min(vals))
+    normed = np.sign(normed)*np.sqrt(np.abs(normed))
+#    normed = np.cbrt(normed)
+    return normed
 
 def minNorm_data(data):
     data = np.copy(data)
-    data[:,1] = data[:,1]/np.abs(np.min(data[:,1]))
+    normed = data[:,1]
+    normed = normed/np.abs(np.min(normed))
+    normed = np.sign(normed)*np.sqrt(np.abs(normed))
+#    normed = np.cbrt(normed)
+    data[:,1] = normed
     return data
 

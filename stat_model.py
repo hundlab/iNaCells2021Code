@@ -17,9 +17,11 @@ def make_model(calc_fn, key_groups, datas, model_params_initial, model):
     
     for i in range(len(model_params_initial)):
         # model parameter mean prior ~N
-        model_param_mean = pymc.Normal("model_param_mean_{}".format(i),
+        model_param_mean = pymc.TruncatedNormal("model_param_mean_{}".format(i),
                                        mu = model_params_initial[i],
-                                       tau = 1/10**2,
+                                       tau = 1,
+                                       a=model.param_bounds[i][0],
+                                       b=model.param_bounds[i][1],
                                        value = model_params_initial[i])
     
         # model parameter variance prior ~IG
