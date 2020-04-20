@@ -171,32 +171,31 @@ if run_fits['Inactivation']:
 
 
 
-    # #tau inactivation fast & slow
-    # keys_iin = [('21647304_2', 'Dataset C Adults'), ('21647304_2',	'Dataset D Adults'),\
-    #             ('21647304_2', 'Dataset C Pediactric'), ('21647304_2',	'Dataset D Pediactric')]
-    # #('1323431_5',	'Dataset B fast'),('1323431_5',	'Dataset B slow'),\
-    # keys_all += keys_iin
-    # process = partial(calcExpTauInact,func=biExp,x0=biExp_params,\
-    #                   keep=[0,1],calc_dur=1)
-    # setup_sim_args = {'sim_args':{'solver': solver,
-    #                               'retOptions': \
-    #                                       {'G': True, 'INa': True, 'INaL': True,\
-    #                                         'Open': True, 'RevPot': True},
-    #                               'dt' : dt,
-    #                               'process' : process,
-    #                               'post_process' : partial(func_norm, 
-    #                                                        func=lambda vals: np.log(resort(vals)))}}
+    #tau inactivation fast & slow
+    keys_iin = [('21647304_2', 'Dataset C Adults'), ('21647304_2',	'Dataset D Adults'),\
+                ('21647304_2', 'Dataset C Pediactric'), ('21647304_2',	'Dataset D Pediactric')]
+    #('1323431_5',	'Dataset B fast'),('1323431_5',	'Dataset B slow'),\
+    keys_all += keys_iin
+    process = partial(calcExpTauInact,func=biExp,x0=biExp_params,\
+                      keep=[0,1],calc_dur=1)
+    setup_sim_args = {'sim_args':{'solver': solver,
+                                  'retOptions': \
+                                          {'G': True, 'INa': True, 'INaL': True,\
+                                            'Open': True, 'RevPot': True},
+                                  'dt' : dt,
+                                  'process' : process,
+                                  'post_process' : partial(func_norm, 
+                                                            func=lambda vals: np.log(resort(vals)))}} 
+    for i in range(0,len(keys_iin),2):
+        keyf = keys_iin[i]
+        keys = keys_iin[i+1]
+        key_dataf = func_norm_data(data[keyf], np.log)
+        key_datas = func_norm_data(data[keys], np.log)
+        key_exp_p = exp_parameters.loc[keyf]
+        voltages, durs, sim_f = setup_sim(model, key_dataf, key_exp_p, **setup_sim_args)
     
-    # for i in range(0,len(keys_iin),2):
-    #     keyf = keys_iin[i]
-    #     keys = keys_iin[i+1]
-    #     key_dataf = func_norm_data(data[keyf], np.log)
-    #     key_datas = func_norm_data(data[keys], np.log)
-    #     key_exp_p = exp_parameters.loc[keyf]
-    #     voltages, durs, sim_f = setup_sim(model, key_dataf, key_exp_p, **setup_sim_args)
-    
-    #     sim_fs[keyf] = sim_f
-    #     datas[keyf] = np.concatenate((key_dataf, key_datas))
+        sim_fs[keyf] = sim_f
+        datas[keyf] = np.concatenate((key_dataf, key_datas))
 
 if run_fits['Activation']:
 

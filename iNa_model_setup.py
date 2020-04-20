@@ -16,9 +16,9 @@ except NameError:
                 'Recovery':     True,\
                 'Tau Act':      False
                 }
-#model_name = "OHaraGratz"
+model_name = "OHaraGratz"
 #model_name = "OHara"
-model_name = "Koval"
+#model_name = "Koval"
 
 mp_locs = []
 
@@ -92,7 +92,7 @@ elif model_name == "Koval":
     dt = 0.05
     
     model_params_initial = np.zeros(model.num_params)
-    mp_locs = np.arange(20)
+    mp_locs = np.arange(1,20)
     
 elif model_name == "OHaraGratz":
     model = OHaraRudy_Gratz_INa#models.iNa.OharaRudy_INa#OHaraRudy_INa
@@ -101,22 +101,20 @@ elif model_name == "OHaraGratz":
     
     model_params_initial = np.zeros(model.num_params)
 
-    
-    model_params_initial = np.zeros(model.num_params)#np.array([ 0.        ,  0.        ,  1.49431475, -1.84448536, -1.21581823,
-
     if run_fits['Recovery']:
-        mp_locs += [7] + list(range(17,22))# + [31,32] # [7]
+        mp_locs += [7] + list(range(13,16)) + [25,26] # [7]
         
     if run_fits['Inactivation']:
-        mp_locs += list(range(7,12)) + [16,30] #7,17
+        mp_locs += list(range(7,13)) + [24,27] #7,17
         
     if run_fits['Activation']:
-        mp_locs += list(range(2,7)) + [29]#list(range(2,5))
+        mp_locs += list(range(2,7)) + [23]#list(range(2,5))
 
-    
-import inspect
-print(np.array(inspect.getfullargspec(model.__init__).args)[1:][mp_locs])
 
 mp_locs = np.array(list(set(mp_locs)))
 sub_mps = model_params_initial[mp_locs]
 sub_mp_bounds = np.array(model.param_bounds)[mp_locs]
+
+import inspect
+print(np.array(inspect.getfullargspec(model.__init__).args)[1:][mp_locs])
+

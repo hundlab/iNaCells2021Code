@@ -275,10 +275,10 @@ def scipySolver(flat_durs, flat_voltages, run_model, solver, dt=None):
         print(wrap_run_model.run_model.lastVal)
         raise e
     if not res.success:
-        print('Solve IVP Failure')
-        print("Model State:")
-        print(wrap_run_model.run_model.lastVal)
-        raise ValueError(res.message)
+        message = res.message
+        message += 'Solve IVP Failure\nModel State\n'
+        message += str(wrap_run_model.run_model.lastVal)
+        raise ValueError(message)
 
 #    print(res)
     times = res.t

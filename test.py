@@ -58,9 +58,10 @@ keys_iin = [\
 ('7971163_6', 'Dataset -85'),\
 ('7971163_6', 'Dataset -95'),\
 ('7971163_6', 'Dataset -105'),\
-('7971163_6', 'Dataset -115'),\
+('7971163_6', 'Dataset -115'),
 ('7971163_6', 'Dataset -125'),\
-('7971163_6', 'Dataset -135')]
+('7971163_6', 'Dataset -135')
+]
 keys_keep += keys_iin
 
 
@@ -101,28 +102,33 @@ keys_iin = [('8928874_8', 'Dataset E fresh'), ('8928874_8',	'Dataset E day 1'),\
 #            ('21647304_2', 'Dataset C Adults'), ('21647304_2', 'Dataset C Pediactric')]
 keys_keep += keys_iin
 
-# #tau inactivation normalized to first
-# keys_iin = [('1323431_6',	'Dataset -80'), ('1323431_6',	'Dataset -100')]
-# keys_keep += keys_iin
 
 
 
-# #tau inactivation fast & slow
-# keys_iin = [('21647304_2', 'Dataset C Adults'), ('21647304_2',	'Dataset D Adults'),\
-#             ('21647304_2', 'Dataset C Pediactric'), ('21647304_2',	'Dataset D Pediactric')]
-# #('1323431_5',	'Dataset B fast'),('1323431_5',	'Dataset B slow'),\
-# keys_keep += keys_iin
+
+## #tau inactivation normalized to first
+## keys_iin = [('1323431_6',	'Dataset -80'), ('1323431_6',	'Dataset -100')]
+## keys_keep += keys_iin
 
 
 
-# keys_keep = set(keys_keep)
-# sim_fs = {key: sim_f for key, sim_f in sim_fs.items() if key in keys_keep}
-# datas = {key: data for key, data in datas.items() if key in keys_keep}
+#tau inactivation fast & slow
+keys_iin = [('21647304_2', 'Dataset C Adults'), ('21647304_2',	'Dataset D Adults'),\
+            ('21647304_2', 'Dataset C Pediactric'), ('21647304_2',	'Dataset D Pediactric')]
+#('1323431_5',	'Dataset B fast'),('1323431_5',	'Dataset B slow'),\
+keys_keep += keys_iin
+
+#------------------------------------------------------------------------------
+#------------------------------------------------------------------------------
+
+keys_keep = set(keys_keep)
+sim_fs = {key: sim_f for key, sim_f in sim_fs.items() if key in keys_keep}
+datas = {key: data for key, data in datas.items() if key in keys_keep}
 
 
 #------------------------------------------------------------------------------
 #------------------------------------------------------------------------------
-iNa_fit_functions.plot1 = False #sim
+iNa_fit_functions.plot1 = True#False#True #sim
 iNa_fit_functions.plot2 = True #diff
 iNa_fit_functions.plot3 = False #tau
 
