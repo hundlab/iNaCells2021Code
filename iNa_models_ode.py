@@ -9,7 +9,11 @@ import numpy as np
 import pandas as pd
 
 class ObjDict():
-    pass
+    def __repr__(self):
+        return str(self.__dict__)
+    
+def isList(thing):
+    return isinstance(thing, (list, tuple, np.ndarray))
 
 class OHaraRudy_INa():
     num_params = 33
@@ -118,7 +122,7 @@ class OHaraRudy_INa():
         
         self.retOptions = {'G': True, 'INa': True, 'INaL': True,\
                                  'Open': True, 'RevPot': True}
-            
+        self.lastVal = None            
 
     
     def calc_taus_ss(self, vOld):
@@ -387,10 +391,13 @@ class OHaraRudy_Gratz_INa():
         
         self.retOptions = {'G': True, 'INa': True, 'INaL': True,\
                                  'Open': True, 'RevPot': True}
+        self.lastVal = None
             
 
     
     def calc_taus_ss(self, vOld):
+        if self.lastVal is not None and np.array_equal(self.lastVal[0], vOld):
+            return self.lastVal[1]
         tau = ObjDict()
         ss = ObjDict()
         
@@ -423,7 +430,8 @@ class OHaraRudy_Gratz_INa():
         ss.hLssp = 1.0 / (1.0 + np.exp((vOld + 93.81) / self.hLssp_tau));
         tau.thLp = self.thLp_mult * tau.thL;
 
-        tau.__dict__ = {key: min(max(value, 1e-8), 1e20) for key,value in tau.__dict__.items()}
+#        tau.__dict__ = {key: min(max(value, 1e-8), 1e20) for key,value in tau.__dict__.items()}
+        self.lastVal = (vOld, (tau, ss))
         return tau, ss
     
     def jac(self, vOld):
@@ -551,13 +559,12 @@ class OHaraRudy_Gratz_INa():
 class Koval_ina:
     num_params = 22
     param_bounds = \
-        [(-2,2)] +\
-        [(-2,2)]*3 +\
-        [(-2,2)]*3 +\
-        [(-2,2)]*2 + [(-10,10)] +\
-        [(-2,2)] + [(-10,10)] + [(-2,2)] +\
-        [(-2,2)]*9
-    
+       [(-3,3)] +\
+        [(-3,3)]*3 +\
+        [(-3,3)] + [(-0.2,3)] + [(-3,3)] +\
+        [(-0.2,3),(-3,3)] + [(-10,10)] +\
+        [(-3,3)] + [(-10,10)] + [(-3,3)] +\
+        [(-3,3)]*9
     
     RGAS = 8314.4
     FDAY = 96485
@@ -618,9 +625,12 @@ class Koval_ina:
 
         self.retOptions = {'G': True, 'INa': True, 'INaL': True,\
                                  'Open': True, 'RevPot': True}
+        self.lastVal = None
 
 
     def calc_alphas_betas(self, vOld):
+        if self.lastVal is not None and np.array_equal(self.lastVal[0], vOld):
+            return self.lastVal[1]
         exp = np.exp
         a = np.zeros(10)
         b = np.zeros(10)
@@ -647,6 +657,10 @@ class Koval_ina:
         b[7] = self.P1b7*a[5]
         b[8] = self.P1b8
         b[9] = self.P1b9
+        
+#        if np.max(a) > 1e6 or np.max(b) > 1e6:
+#            print('test')
+        self.lastVal = (vOld, (a,b))
         
         return a, b
 

@@ -115,8 +115,8 @@ elif model_name == "OHaraGratz":
 
     
 import inspect
-print(np.array(inspect.getfullargspec(model.__init__).args)[mp_locs+1])
+print(np.array(inspect.getfullargspec(model.__init__).args)[1:][mp_locs])
 
-mp_locs = list(set(mp_locs))
+mp_locs = np.array(list(set(mp_locs)))
 sub_mps = model_params_initial[mp_locs]
 sub_mp_bounds = np.array(model.param_bounds)[mp_locs]

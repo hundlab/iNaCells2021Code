@@ -94,8 +94,11 @@ def calcExpTauInact(times, current, func, x0, sub_sim_pos, durs, calc_dur = 1, k
     peak_val = current[stimMask][peak_loc]
     baseline_val = current[stimMask][baseline_loc]
     cut_val = peak_val - (peak_val - baseline_val)*.1
-    cut_loc = np.where(np.abs(current[stimMask][peak_loc:]) < np.abs(cut_val))[0][0]
-    cut_loc = np.where(stimMask)[0][peak_loc+cut_loc]
+    try:
+        cut_loc = np.where(np.abs(current[stimMask][peak_loc:]) < np.abs(cut_val))[0][0]
+        cut_loc = np.where(stimMask)[0][peak_loc+cut_loc]
+    except:
+        raise ValueError("Current Peak too small to calculate tau")
     
 #    firstdv = np.diff(current)/np.diff(times)
 #    print(cut_loc-np.argmax(firstdv))
@@ -264,10 +267,17 @@ def scipySolver(flat_durs, flat_voltages, run_model, solver, dt=None):
         jac = wrap_run_model.jac
     else:
         jac = None
-    res = solver(wrap_run_model, (0,wrap_run_model.t_end), run_model.state_vals,
-                 first_step=dt, max_step = max_step, jac=jac, vectorized=True)
+    try:
+        res = solver(wrap_run_model, (0,wrap_run_model.t_end), run_model.state_vals,
+                     first_step=dt, max_step = max_step, jac=jac, vectorized=True)
+    except Exception as e:
+        print("Model State:")
+        print(wrap_run_model.run_model.lastVal)
+        raise e
     if not res.success:
-#        print('Solve IVP Failure')
+        print('Solve IVP Failure')
+        print("Model State:")
+        print(wrap_run_model.run_model.lastVal)
         raise ValueError(res.message)
 
 #    print(res)
@@ -297,6 +307,7 @@ def solveAndProcesses(flat_durs, flat_voltages, run_model, solver, dt, process, 
         plt.legend(lines, list(run_model.recArrayNames))
         
     processed = process(times=times,current=iNa,vMs=vMs,sub_sim_pos=sub_sim_pos,durs=durs)
+
 
     return processed
 
@@ -357,7 +368,6 @@ def run_sim(model_parameters, model, voltages, durs, sim_param, process, post_pr
     out = np.array(out)
     if not post_process is None:
         out =  post_process(np.array(out))
-    
     yield out
 
 def setup_sim(model, data, exp_parameters, hold_dur=1, sim_args={}): #ret = [True]*3
@@ -554,7 +564,10 @@ def calc_diff_multiple(model_parameters_part, model_parameters_full, sim_func,\
                 plt.scatter(sub_dat[:,0], sub_dat[:,1])
                 plt.legend()
         except Exception as e:
+            import traceback
+            print(traceback.format_exc())
             print(e)
+#            raise e
             error += [error_fill]*sub_dat.shape[0]
     # if not pool is None:
     #     vals_sims_res = []
