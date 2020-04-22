@@ -62,6 +62,11 @@ def resort(vals, **kwargs):
 def normalizeToFirst(vals, **kwargs):
     return vals/vals[0]
 
+def normalizeToFirst_data(data):
+    data = np.copy(data)
+    data[:,1] = data[:,1]/data[0,1]
+    return data
+
 def minMaxNorm(vals, feature_range=(0, 1), **kwargs):
     return minmax_scale(vals, feature_range=feature_range)
 

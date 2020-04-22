@@ -13,7 +13,8 @@ from iNa_fit_functions import normalize2prepulse, setup_sim, \
 calc_diff, peakCurr, normalized2val, calcExpTauInact, monoExp, biExp,\
 calcExpTauAct, biExp_params, monoExp_params
 from setup_sim_functions import setupSimExp, normalizeToBaseline, normalizeToFirst,\
-    resort, minNorm_data, minNorm, minMaxNorm, func_norm, func_norm_data, minMaxNorm_data
+    resort, minNorm_data, minNorm, minMaxNorm, func_norm, func_norm_data, minMaxNorm_data,\
+    normalizeToFirst_data
 from iNa_model_setup import model, mp_locs, sub_mps, sub_mp_bounds, dt, run_fits
 
 
@@ -131,6 +132,7 @@ if run_fits['Inactivation']:
                 process=partial(peakCurr, durn=3),\
                 dt=dt,\
                 post_process=normalizeToFirst,
+                process_data=normalizeToFirst_data,
                 setup_sim_args={'sim_args':{'solver': solver}})
 
     #tau inactivation

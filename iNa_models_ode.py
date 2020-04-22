@@ -416,25 +416,25 @@ class OHaraRudy_Gratz_INa():
                            self.tm_mult2 * np.exp(-(vOld + 77.42) / self.tm_tau2));
 
         ss.hfss = 1.0 / (1 + np.exp((vOld + self.hfss_shift+5) / self.hss_tau));
-#        tau.thf = self.baseline/5 + (self.thf_max-self.baseline/5) / (1+np.exp((vOld-self.thf_shift)/self.thf_tau))
+        tau.thf = self.baseline/5 + (self.thf_max-self.baseline/5) / (1+np.exp((vOld-self.thf_shift)/self.thf_tau))
 
-        tau.thf = self.baseline/5 + 1/(6.149) * np.exp(-(vOld + 0.5096) / 15);
-        if vOld < -100:
-            tau.thf = self.baseline
+#        tau.thf = self.baseline/5 + 1/(6.149) * np.exp(-(vOld + 0.5096) / 15);
+#        if vOld < -100:
+#            tau.thf = self.baseline
 #        tau.thf = np.clip(tau.thf, a_max=15, a_min=None)
 
         ss.hsss = 1.0 / (1 + np.exp((vOld + self.hsss_shift-5) / (self.hss_tau+8)));
-#        tau.ths = self.baseline + (self.ths_max-self.baseline) / (1+np.exp((vOld-self.ths_shift)/self.ths_tau))
+        tau.ths = self.baseline + (self.ths_max-self.baseline) / (1+np.exp((vOld-self.ths_shift)/self.ths_tau))
 
-        tau.ths = self.baseline + 1.0 / (0.3343) * np.exp(-(vOld + 5.730) / 30);
-        if vOld < -100:
-            tau.ths = self.baseline
+#        tau.ths = self.baseline + 1.0 / (0.3343) * np.exp(-(vOld + 5.730) / 30);
+#        if vOld < -100:
+#            tau.ths = self.baseline
 #        tau.ths = np.clip(tau.ths, a_max=20, a_min=None)
 
         ss.jss = 1.0 / (1 + np.exp((vOld + self.jss_shift+5) / (self.jss_tau)));#hss;
         tau.tj = self.baseline + (self.tj_max-self.baseline)/(1+np.exp(-1/self.tj_tau*(vOld-self.tj_shift)))
-        if vOld > -50:
-            tau.tj = 100
+        if vOld > -60:
+            tau.tj = 100 + (self.tj_max-100)/(1+np.exp(2/self.tj_tau*(vOld-(self.tj_shift+40))))
 
         ss.hssp = 1.0 / (1 + np.exp((vOld + 89.1) / self.hssp_tau));
         tau.thsp = self.tssp_mult * tau.ths;

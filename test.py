@@ -78,13 +78,13 @@ keys_keep += keys_iin
 
 
 #inactivation normalized to no prepulse
-keys_iin = [('7971163_4', 'Dataset 32ms'), ('7971163_4', 'Dataset 64ms'),
-             ('7971163_4', 'Dataset 128ms'), ('7971163_4', 'Dataset 256ms'),
+keys_iin = [
+    ('7971163_4', 'Dataset 32ms'), ('7971163_4', 'Dataset 64ms'),
+            ('7971163_4', 'Dataset 128ms'), ('7971163_4', 'Dataset 256ms'),
              ('7971163_4', 'Dataset 512ms'),\
 
-
-             ('8928874_8',	'Dataset C fresh'), ('8928874_8',	'Dataset C day 1'),\
-             ('8928874_8',	'Dataset C day 3'), ('8928874_8',	'Dataset C day 5')
+            ('8928874_8',	'Dataset C fresh'), ('8928874_8',	'Dataset C day 1'),\
+            ('8928874_8',	'Dataset C day 3'), ('8928874_8',	'Dataset C day 5')
             ]
 #('21647304_3',	'Dataset B Adults'), ('21647304_3',	'Dataset B Pediatrics')
 keys_keep += keys_iin
@@ -98,20 +98,20 @@ keys_keep += keys_iin
 
 
 
-#tau inactivation
-keys_iin = [('8928874_8', 'Dataset E fresh'), ('8928874_8',	'Dataset E day 1'),\
-            ('8928874_8',	'Dataset E day 3'), ('8928874_8',	'Dataset E day 5')]#,\
-#            ('1323431_5',	'Dataset B fast'),\
-#            ('21647304_2', 'Dataset C Adults'), ('21647304_2', 'Dataset C Pediactric')]
-keys_keep += keys_iin
+# #tau inactivation
+# keys_iin = [('8928874_8', 'Dataset E fresh'), ('8928874_8',	'Dataset E day 1'),\
+#             ('8928874_8',	'Dataset E day 3'), ('8928874_8',	'Dataset E day 5')]#,\
+# #            ('1323431_5',	'Dataset B fast'),\
+# #            ('21647304_2', 'Dataset C Adults'), ('21647304_2', 'Dataset C Pediactric')]
+# keys_keep += keys_iin
 
 
 
-#tau inactivation fast & slow
-keys_iin = [('21647304_2', 'Dataset C Adults'), ('21647304_2',	'Dataset D Adults'),\
-            ('21647304_2', 'Dataset C Pediactric'), ('21647304_2',	'Dataset D Pediactric')]
-#('1323431_5',	'Dataset B fast'),('1323431_5',	'Dataset B slow'),\
-keys_keep += keys_iin
+# #tau inactivation fast & slow
+# keys_iin = [('21647304_2', 'Dataset C Adults'), ('21647304_2',	'Dataset D Adults'),\
+#             ('21647304_2', 'Dataset C Pediactric'), ('21647304_2',	'Dataset D Pediactric')]
+# #('1323431_5',	'Dataset B fast'),('1323431_5',	'Dataset B slow'),\
+# keys_keep += keys_iin
 
 
 
