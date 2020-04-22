@@ -283,22 +283,27 @@ class OHaraRudy_INa():
 
 
 class OHaraRudy_Gratz_INa():
-    num_params = 28
-    param_bounds = [(-3,3)]*2 + \
-                   [(-3,3)]*2 + [(-0.1,3)] + \
-                   [(-3,3)] + [(-0.1,3)] + \
-                   [(-3,3)] + \
-                   [(-3,3)]*2 + \
-                   [(-3,3)]*2 + \
-                   [(-5,5)] + \
-                   [(-3,3)] + \
-                   [(-3,3)]*2 + \
-                   [(-1,1)]*3 + \
-                   [(-1,1)]*2 + \
-                   [(-1,1)]*2 + \
-                   [(-15,15)]*2 + \
-                   [(-15,15), (-3,3)] + \
-                   [(-15,15)]
+    num_params = 31
+    param_bounds = [(-3,3), (-3,3),
+
+                   (-3,3),
+
+                   (-1,3), (-15,15),
+                   (-3,3), (-0.1,3),
+                   (-3,3), (-0.1,3),
+                   
+                   (-1,3), (-15,15), (-15,15),
+                   (-3,3), (-15,15), (-1,3),
+                   (-3,3), (-15,15), (-1,3),
+                   (-5,5),
+                   
+                   (-1,3), (-15,15),
+                   (-3,3), (-15,15), (-1,3),
+                   
+                   (-1,3), (-3,3), (-15,15),
+                   
+                   (-1,3), (-1,3),
+                   (-3,3), (-3,3)]
                                
     RGAS = 8314.0;
     FDAY = 96487.0;
@@ -306,73 +311,84 @@ class OHaraRudy_Gratz_INa():
     KmCaMK = 0.15
     CaMKa = 1e-5
 
-    def __init__(self, GNaFactor=0, GNaLFactor=0, \
-                 mss_tauFactor=0, tm_mult1Factor=0, tm_tau1Factor=0,\
-                 tm_mult2Factor=0, tm_tau2Factor=0,\
-                 hss_tauFactor=0,
-                 thf_mult2Factor=0, thf_tau2Factor=0,\
-                 ths_mult2Factor=0, ths_tau2Factor=0,\
-                 Ahf_multFactor=0,\
-                 tj_baselineFactor=0,\
-                 tj_mult2Factor=0, tj_tau2Factor=0,\
+    def __init__(self, GNaFactor=0, GNaLFactor=0,
+
+                 baselineFactor=0,
+
+                 mss_tauFactor=0, mss_shiftFactor=0,
+                 tm_mult1Factor=0, tm_tau1Factor=0,
+                 tm_mult2Factor=0, tm_tau2Factor=0,
+                 
+                 hss_tauFactor=0, hss_shiftFactor=0, hsss_shiftFactor=0,
+                 thf_maxFactor=0, thf_shiftFactor=0, thf_tauFactor=0,
+                 ths_maxFactor=0, ths_shiftFactor=0, ths_tauFactor=0,
+                 Ahf_multFactor=0,
+
+                 jss_tauFactor=0, jss_shiftFactor=0,
+                 tj_maxFactor=0, tj_shiftFactor=0, tj_tauFactor=0,
+
                  hssp_tauFactor=0, tssp_multFactor=0, tjp_multFactor=0,\
-                 mLss_tauFactor=0, hLss_tauFactor=0,\
-                 thL_baselineFactor=0, thLp_multFactor=0,\
-                 mss_shiftFactor=0, hss_shiftFactor=0,\
-                 jss_shiftFactor=0, jss_tauFactor=0,
-                 hsss_shiftFactor=0,
+
+                 mLss_tauFactor=0, hLss_tauFactor=0,
+                 thL_baselineFactor=0, thLp_multFactor=0,
+                 
                  TEMP = 310.0, naO = 140.0, naI = 7):
 
         # scaling currents 0 
         self.GNa = 75*np.exp(GNaFactor);
         self.GNaL = 0.0075*np.exp(GNaLFactor);
 
-        #m gate 2
+        #fastest tau 2
+        self.baseline = 2.038*np.exp(baselineFactor)
+
+        #m gate 3
         self.mss_tau = 9.871*np.exp(mss_tauFactor)
+        self.mss_shift = 39.57+mss_shiftFactor
 
         self.tm_mult1 = 6.765*np.exp(tm_mult1Factor)
         self.tm_tau1 = 34.77*np.exp(tm_tau1Factor)
         self.tm_mult2 = 8.552*np.exp(tm_mult2Factor)
         self.tm_tau2 = 5.955*np.exp(tm_tau2Factor)
 
-        #h gate 7
+        #h gate 9
         self.hss_tau = 6.086*np.exp(hss_tauFactor)
+        self.hfss_shift = 82.90+hss_shiftFactor
+        self.hsss_shift = 60*np.exp(hsss_shiftFactor)
 
-        self.thf_mult2 = 6.149*np.exp(thf_mult2Factor)
-        self.thf_tau2 = 20.27*np.exp(thf_tau2Factor)
-#12
-        self.ths_mult2 = 0.3343*np.exp(ths_mult2Factor)
-        self.ths_tau2 = 56.66*np.exp(ths_tau2Factor)
+        self.thf_max = 50*np.exp(thf_maxFactor)
+        self.thf_shift = -78+thf_shiftFactor
+        self.thf_tau = 15*np.exp(thf_tauFactor)
+        
+        self.ths_max = 50*np.exp(ths_maxFactor)
+        self.ths_shift = -75+ths_shiftFactor
+        self.ths_tau = 40*np.exp(ths_tauFactor)
 
         mixingodds = np.exp(Ahf_multFactor)
         self.Ahf_mult = mixingodds/(mixingodds+1)# np.exp(Ahf_multFactor)
 
-        #j gate 17
-        self.tj_baseline = 2.038*np.exp(tj_baselineFactor)
-        self.tj_mult2 = 0.3052*np.exp(tj_mult2Factor)
-        self.tj_tau2 = 38.45*np.exp(tj_tau2Factor)
+        #j gate 19
+        self.jss_tau = 6.086*np.exp(jss_tauFactor)
+        self.jss_shift = 80+jss_shiftFactor
+        
+        self.tj_max = 200*np.exp(tj_maxFactor)
+        self.tj_shift = -95+tj_shiftFactor
+        self.tj_tau = 3*np.exp(tj_tauFactor)
 
-        # phosphorylated gates
+
+        # phosphorylated gates 24
         self.hssp_tau = 6.086*np.exp(hssp_tauFactor)
         self.tssp_mult = 3.0*np.exp(tssp_multFactor)
         self.tjp_mult = 1.46*np.exp(tjp_multFactor)
 
-        #late gates & late gate phosphorylation
+        #late gates & late gate phosphorylation 27
         self.mLss_tau = 5.264*np.exp(mLss_tauFactor)
         self.hLss_tau = 7.488*np.exp(hLss_tauFactor)
         self.hLssp_tau = self.hLss_tau
 
         self.thL_baseline = 200.0*np.exp(thL_baselineFactor)
         self.thLp_mult = 3*np.exp(thLp_multFactor)
+    
         
-        #added later 29
-        self.mss_shift = 39.57+mss_shiftFactor
-        self.hss_shift = 82.90+hss_shiftFactor
-        self.jss_shift = 80+jss_shiftFactor
-        self.jss_tau = 6.086*np.exp(jss_tauFactor)
-        
-        self.hsss_shift = 60*np.exp(hsss_shiftFactor)
-
         self.TEMP = TEMP
         self.naO = naO
         self.naI = naI
@@ -395,25 +411,30 @@ class OHaraRudy_Gratz_INa():
         tau = ObjDict()
         ss = ObjDict()
         
-        ss.mss = 1.0 / (1.0 + np.exp((-(vOld + self.mss_shift)) / self.mss_tau));
-        tau.tm = 1.0 / (self.tm_mult1 * np.exp((vOld + 11.64) / self.tm_tau1) +
+        ss.mss = 1.0 / (1.0 + np.exp((-(vOld + self.mss_shift+12)) / self.mss_tau));
+        tau.tm = self.baseline/15+ 1.0 / (self.tm_mult1 * np.exp((vOld + 11.64) / self.tm_tau1) +
                            self.tm_mult2 * np.exp(-(vOld + 77.42) / self.tm_tau2));
 
-        ss.hfss = 1.0 / (1 + np.exp((vOld + self.hss_shift) / self.hss_tau));
-        tau.thf = self.tj_baseline/5 + 1/(self.thf_mult2) * np.exp(-(vOld + 0.5096) / self.thf_tau2);
-        
-        tau.thf = np.clip(tau.thf, a_max=15, a_min=None)
+        ss.hfss = 1.0 / (1 + np.exp((vOld + self.hfss_shift+5) / self.hss_tau));
+#        tau.thf = self.baseline/5 + (self.thf_max-self.baseline/5) / (1+np.exp((vOld-self.thf_shift)/self.thf_tau))
 
-        ss.hsss = 1.0 / (1 + np.exp((vOld + self.hsss_shift) / self.hss_tau));
-        tau.ths = self.tj_baseline + 1.0 / (self.ths_mult2) * np.exp(-(vOld + 5.730) / self.ths_tau2);
+        tau.thf = self.baseline/5 + 1/(6.149) * np.exp(-(vOld + 0.5096) / 15);
+        if vOld < -100:
+            tau.thf = self.baseline
+#        tau.thf = np.clip(tau.thf, a_max=15, a_min=None)
 
-        tau.ths = np.clip(tau.ths, a_max=20, a_min=None)
+        ss.hsss = 1.0 / (1 + np.exp((vOld + self.hsss_shift-5) / (self.hss_tau+8)));
+#        tau.ths = self.baseline + (self.ths_max-self.baseline) / (1+np.exp((vOld-self.ths_shift)/self.ths_tau))
+
+        tau.ths = self.baseline + 1.0 / (0.3343) * np.exp(-(vOld + 5.730) / 30);
+        if vOld < -100:
+            tau.ths = self.baseline
+#        tau.ths = np.clip(tau.ths, a_max=20, a_min=None)
 
         ss.jss = 1.0 / (1 + np.exp((vOld + self.jss_shift+5) / (self.jss_tau)));#hss;
-        tau.tj = self.tj_baseline + 200/(1+np.exp(-1/3*(vOld+95)))
+        tau.tj = self.baseline + (self.tj_max-self.baseline)/(1+np.exp(-1/self.tj_tau*(vOld-self.tj_shift)))
         if vOld > -50:
             tau.tj = 100
-        #self.tj_baseline + self.tj_mult2 * np.exp((vOld + 0.9941+120) / (self.tj_tau2*100));
 
         ss.hssp = 1.0 / (1 + np.exp((vOld + 89.1) / self.hssp_tau));
         tau.thsp = self.tssp_mult * tau.ths;

@@ -37,7 +37,7 @@ res = pickle.load(open('./optimize_ohara_0417_0041.pkl','rb'))
 #partial
 #res = pickle.load(open('./fits_res_joint_ohara_0416_1913.pkl','rb'))
 mp_locs = res.mp_locs
-res.x = np.zeros_like(res.x)
+#res.x = np.zeros_like(res.x)
 
 
 keys_keep = set(key for keys in res.keys_all for key in keys)

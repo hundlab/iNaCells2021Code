@@ -13,7 +13,7 @@ from iNa_fit_functions import normalize2prepulse, setup_sim, \
 calc_diff, peakCurr, normalized2val, calcExpTauInact, monoExp, biExp,\
 calcExpTauAct, biExp_params, monoExp_params
 from setup_sim_functions import setupSimExp, normalizeToBaseline, normalizeToFirst,\
-    resort, minNorm_data, minNorm, minMaxNorm, func_norm, func_norm_data
+    resort, minNorm_data, minNorm, minMaxNorm, func_norm, func_norm_data, minMaxNorm_data
 from iNa_model_setup import model, mp_locs, sub_mps, sub_mp_bounds, dt, run_fits
 
 
@@ -215,6 +215,7 @@ if run_fits['Activation']:
                 process=peakCurr,
                 dt=dt,
                 post_process=minMaxNorm,
+                process_data=minMaxNorm_data,
                 setup_sim_args={'sim_args':{'retOptions': 
                                 {'G': False, 'INa': True, 'INaL': False,
                                  'Open': True, 'RevPot': False},
