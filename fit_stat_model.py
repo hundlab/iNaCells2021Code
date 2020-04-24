@@ -18,13 +18,12 @@ from functools import partial
 import os
 
 from iNa_sims import sim_fs, datas, keys_all
-from iNa_sims import model, mp_locs, sub_mps
 from stat_model import make_model
 from iNa_model_setup import model_name as biophys_model_name
-from iNa_model_setup import model_params_initial
+from iNa_model_setup import model_params_initial, mp_locs, sub_mps, model
 
 #from './optimize_Koval_0423_0326.pkl'
-model_params_initial[:] = np.array(
+model_params_initial[mp_locs] = np.array(
     [-0.80680888,  0.63417512, -0.69291108, -2.04633128, -0.01836348,
         0.35378153,  0.64030428, -0.8010144 ,  0.72033717, -1.68578422,
         5.87859494, -1.00653083, -1.67532066,  0.84144004,  0.88200433,
