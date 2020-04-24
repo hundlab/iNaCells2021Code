@@ -494,7 +494,10 @@ def calc_results(model_parameters_part, model_parameters_full, sim_funcs,\
     for key in sim_funcs:
         sims_iter = sims_iters[key]
         try:
-            vals_sims[key] = next(sims_iter)
+            vals_sim = next(sims_iter)
+            vals_sims[key] = vals_sim
+            if vals_sim is None:
+                raise ValueError("sims_iter returned none")
         except Exception as e:
             print(e)
 #            raise e

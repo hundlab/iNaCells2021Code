@@ -30,8 +30,11 @@ def make_model(calc_fn, key_groups, datas, model_params_initial, model):
                                                   value = 1)
         
         # model parameter  ~ N
-        model_param = pymc.Normal("model_param_{}".format(i),
-                                         mu=model_param_mean, tau=model_param_tau)
+        model_param = pymc.TruncatedNormal("model_param_{}".format(i),
+                                         mu=model_param_mean,
+                                         tau=model_param_tau,
+                                         a=model.param_bounds[i][0],
+                                         b=model.param_bounds[i][1])
         model_params.append(model_param)
         
     model_params = np.array(model_params)
