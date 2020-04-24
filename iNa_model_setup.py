@@ -11,14 +11,14 @@ import numpy as np
 
 try: run_fits
 except NameError: 
-    run_fits = {'Activation':   True,\
-                'Inactivation': True,\
-                'Recovery':     True,\
-                'Tau Act':      False
+    run_fits = {'Activation':   True,
+                'Inactivation': True,
+                'Recovery':     True,
+                'Tau Act':      True,
                 }
-model_name = "OHaraGratz"
+#model_name = "OHaraGratz"
 #model_name = "OHara"
-#model_name = "Koval"
+model_name = "Koval"
 
 mp_locs = []
 

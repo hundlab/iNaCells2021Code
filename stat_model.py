@@ -19,7 +19,7 @@ def make_model(calc_fn, key_groups, datas, model_params_initial, model):
         # model parameter mean prior ~N
         model_param_mean = pymc.TruncatedNormal("model_param_mean_{}".format(i),
                                        mu = model_params_initial[i],
-                                       tau = 1,
+                                       tau = .2, #estimated from './optimize_Koval_0423_0326.pkl'
                                        a=model.param_bounds[i][0],
                                        b=model.param_bounds[i][1],
                                        value = model_params_initial[i])

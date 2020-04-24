@@ -33,7 +33,7 @@ from iNa_model_setup import model, sub_mps, sub_mp_bounds, dt, run_fits,\
 
 
 #full optimization
-res = pickle.load(open('./optimize_ohara_0417_0041.pkl','rb'))
+res = pickle.load(open('./optimize_Koval_0423_0326.pkl','rb'))
 #partial
 #res = pickle.load(open('./fits_res_joint_ohara_0416_1913.pkl','rb'))
 mp_locs = res.mp_locs
@@ -47,7 +47,7 @@ datas = {key: data for key, data in datas.items() if key in keys_keep}
 
 
 
-iNa_fit_functions.plot1 = False #sim
+iNa_fit_functions.plot1 = True #sim
 iNa_fit_functions.plot2 = True #diff
 iNa_fit_functions.plot3 = False #tau
 

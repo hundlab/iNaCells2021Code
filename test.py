@@ -81,7 +81,7 @@ keys_keep += keys_iin
 keys_iin = [
     ('7971163_4', 'Dataset 32ms'), ('7971163_4', 'Dataset 64ms'),
             ('7971163_4', 'Dataset 128ms'), ('7971163_4', 'Dataset 256ms'),
-             ('7971163_4', 'Dataset 512ms'),\
+              ('7971163_4', 'Dataset 512ms'),\
 
             ('8928874_8',	'Dataset C fresh'), ('8928874_8',	'Dataset C day 1'),\
             ('8928874_8',	'Dataset C day 3'), ('8928874_8',	'Dataset C day 5')
@@ -98,12 +98,18 @@ keys_keep += keys_iin
 
 
 
-# #tau inactivation
-# keys_iin = [('8928874_8', 'Dataset E fresh'), ('8928874_8',	'Dataset E day 1'),\
-#             ('8928874_8',	'Dataset E day 3'), ('8928874_8',	'Dataset E day 5')]#,\
-# #            ('1323431_5',	'Dataset B fast'),\
-# #            ('21647304_2', 'Dataset C Adults'), ('21647304_2', 'Dataset C Pediactric')]
-# keys_keep += keys_iin
+#tau inactivation
+keys_iin = [('8928874_8', 'Dataset E fresh'), ('8928874_8',	'Dataset E day 1'),\
+            ('8928874_8',	'Dataset E day 3'), ('8928874_8',	'Dataset E day 5')]#,\
+#            ('1323431_5',	'Dataset B fast'),\
+#            ('21647304_2', 'Dataset C Adults'), ('21647304_2', 'Dataset C Pediactric')]
+keys_keep += keys_iin
+
+#tau activation
+keys_iin = [('8928874_8',	'Dataset D fresh'), ('8928874_8',	'Dataset D day 1'),\
+            ('8928874_8',	'Dataset D day 3'), ('8928874_8',	'Dataset D day 5'),
+            ('7971163_3',	'Dataset C')]
+keys_keep += keys_iin
 
 
 
@@ -120,7 +126,6 @@ keys_keep += keys_iin
 ## keys_keep += keys_iin
 
 
-
 #------------------------------------------------------------------------------
 #------------------------------------------------------------------------------
 
@@ -128,6 +133,10 @@ keys_keep = set(keys_keep)
 sim_fs = {key: sim_f for key, sim_f in sim_fs.items() if key in keys_keep}
 datas = {key: data for key, data in datas.items() if key in keys_keep}
 
+import pickle
+res = pickle.load(open('./optimize_Koval_0423_0326.pkl','rb'))
+mp_locs = res.mp_locs
+sub_mps = res.x
 
 #------------------------------------------------------------------------------
 #------------------------------------------------------------------------------

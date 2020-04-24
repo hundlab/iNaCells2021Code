@@ -173,31 +173,31 @@ if run_fits['Inactivation']:
 
 
 
-    #tau inactivation fast & slow
-    keys_iin = [('21647304_2', 'Dataset C Adults'), ('21647304_2',	'Dataset D Adults'),\
-                ('21647304_2', 'Dataset C Pediactric'), ('21647304_2',	'Dataset D Pediactric')]
-    #('1323431_5',	'Dataset B fast'),('1323431_5',	'Dataset B slow'),\
-    keys_all += keys_iin
-    process = partial(calcExpTauInact,func=biExp,x0=biExp_params,\
-                      keep=[0,1],calc_dur=1)
-    setup_sim_args = {'sim_args':{'solver': solver,
-                                  'retOptions': \
-                                          {'G': True, 'INa': True, 'INaL': True,\
-                                            'Open': True, 'RevPot': True},
-                                  'dt' : dt,
-                                  'process' : process,
-                                  'post_process' : partial(func_norm, 
-                                                            func=lambda vals: np.log(resort(vals)))}} 
-    for i in range(0,len(keys_iin),2):
-        keyf = keys_iin[i]
-        keys = keys_iin[i+1]
-        key_dataf = func_norm_data(data[keyf], np.log)
-        key_datas = func_norm_data(data[keys], np.log)
-        key_exp_p = exp_parameters.loc[keyf]
-        voltages, durs, sim_f = setup_sim(model, key_dataf, key_exp_p, **setup_sim_args)
+    # #tau inactivation fast & slow
+    # keys_iin = [('21647304_2', 'Dataset C Adults'), ('21647304_2',	'Dataset D Adults'),\
+    #             ('21647304_2', 'Dataset C Pediactric'), ('21647304_2',	'Dataset D Pediactric')]
+    # #('1323431_5',	'Dataset B fast'),('1323431_5',	'Dataset B slow'),\
+    # keys_all += keys_iin
+    # process = partial(calcExpTauInact,func=biExp,x0=biExp_params,\
+    #                   keep=[0,1],calc_dur=1)
+    # setup_sim_args = {'sim_args':{'solver': solver,
+    #                               'retOptions': \
+    #                                       {'G': True, 'INa': True, 'INaL': True,\
+    #                                         'Open': True, 'RevPot': True},
+    #                               'dt' : dt,
+    #                               'process' : process,
+    #                               'post_process' : partial(func_norm, 
+    #                                                         func=lambda vals: np.log(resort(vals)))}} 
+    # for i in range(0,len(keys_iin),2):
+    #     keyf = keys_iin[i]
+    #     keys = keys_iin[i+1]
+    #     key_dataf = func_norm_data(data[keyf], np.log)
+    #     key_datas = func_norm_data(data[keys], np.log)
+    #     key_exp_p = exp_parameters.loc[keyf]
+    #     voltages, durs, sim_f = setup_sim(model, key_dataf, key_exp_p, **setup_sim_args)
     
-        sim_fs[keyf] = sim_f
-        datas[keyf] = np.concatenate((key_dataf, key_datas))
+    #     sim_fs[keyf] = sim_f
+    #     datas[keyf] = np.concatenate((key_dataf, key_datas))
 
 if run_fits['Activation']:
 
@@ -250,36 +250,29 @@ if run_fits['Activation']:
 
 
 if run_fits['Tau Act']:
-    sim_fs = []
-    datas = []
 
     # tau activation
     keys_iin = [('8928874_8',	'Dataset D fresh'), ('8928874_8',	'Dataset D day 1'),\
-                ('8928874_8',	'Dataset D day 3'), ('8928874_8',	'Dataset D day 5')]
+                ('8928874_8',	'Dataset D day 3'), ('8928874_8',	'Dataset D day 5'),
+                ('7971163_3',	'Dataset C')]
+    keys_all.append(keys_iin)
+
     process = partial(calcExpTauAct,func=monoExp,x0=monoExp_params,\
                       keep=1,calc_dur=(1,1))
 
-    model_params_initial = np.ones(model().num_params)
-    mp_locs = np.arange(model().num_params)#[2,3,4,13]
-    sub_mps = model_params_initial[mp_locs]
+   
+    setupSimExp(sim_fs=sim_fs,\
+                datas=datas,\
+                data=data,\
+                exp_parameters=exp_parameters,\
+                keys_iin=keys_iin,\
+                model=model,\
+                process=process,
+                dt=dt,\
+                post_process=partial(func_norm, func=np.log),
+                process_data=partial(func_norm_data, func=np.log),
+                setup_sim_args={'sim_args':{'solver': solver}, 'hold_dur':50})
 
 
-    for key in keys_iin:
-        key_data = data[key]
-        key_exp_p = exp_parameters.loc[key]
-        voltages, durs, sim_f = setup_sim(model, key_data, key_exp_p, process, dt=dt/10, hold_dur=50)
-        sim_f.keywords['durs'][1] = 10
-
-        sim_fs.append(sim_f)
-        datas.append(key_data)
-
-    if __name__ == '__main__':
-        np.seterr(all='ignore')
-        with Pool(processes=20) as proc_pool:
-            diff_fn = partial(calc_diff, model_parameters_full=model_params_initial,\
-                                  mp_locs=mp_locs, sim_func=sim_fs, data=datas,l=0, pool=proc_pool)
-            res = optimize.least_squares(diff_fn, sub_mps, \
-                                             bounds=([0]*len(sub_mps), [np.inf]*len(sub_mps)))
-            fit_results['Group Tau Act'] = res
 
 

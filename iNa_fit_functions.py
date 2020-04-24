@@ -164,14 +164,15 @@ def calcExpTauAct(times, current, func, x0, sub_sim_pos, durs, calc_dur = (0,1),
 #    coefs, _ = optimize.curve_fit(func, times[min_loc:]-times[min_loc], current[min_loc:],\
 #                                  p0=(current[min_loc]*3/4,1,current[min_loc]*1/4,1,0))
 #    x0[-1] = current[min_loc]
-    diff_fn = partial(diff, pred=current[stimMask], func=func, \
+    diff_fn = partial(diff, pred=np.cbrt(current[stimMask]), func=func, \
                       times=adj_times)
     res = optimize.least_squares(diff_fn, x0)
     if plot3:
         plt.figure()
+        plt.title(str(res.x))
         plt.axvline(times[min_loc]-times[stimMask][0],c='black')
         plt.plot(times-times[stimMask][0], current)
-        plt.plot(adj_times, func(adj_times,*res.x))
+        plt.plot(adj_times, func(adj_times,*res.x)**3)
     return res.x[keep]#(current[min_loc]-current[stimMask][0])/(times[min_loc]-times[stimMask][0])#
 
 
