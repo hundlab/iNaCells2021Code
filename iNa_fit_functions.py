@@ -459,17 +459,20 @@ class SimResults():
         self.keywords = kwargs
         self.cache_args = None
         self.res_cache = None
+        self.call_counter = 0
     def __call__(self, model_parameters, keys):
         model_parameters = np.array(model_parameters, dtype=float)
 #        if not self.cache_args is None:
 #            print(np.abs(self.cache_args- model_parameters))
         if self.cache_args is None or not np.array_equal(model_parameters, self.cache_args):
-            # print(model_parameters)
+            print(model_parameters)
             # print(self.cache_args)
             # print(self.cache_args == model_parameters)
             # print('------------------------------------')
             self.cache_args = model_parameters
             self.res_cache = self.func(model_parameters, **self.keywords)
+            self.call_counter += 1
+            print(self.call_counter)
             
         res = []
         for key in keys:
