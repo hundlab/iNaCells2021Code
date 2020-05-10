@@ -12,7 +12,7 @@ import numpy as np
 
 from scripts import out_dir
 import iNa_fit_functions
-from iNa_fit_functions import calc_results
+from iNa_fit_functions import calc_results, SimResults
 from multiprocessing import Pool
 from functools import partial
 import os
@@ -47,13 +47,14 @@ if __name__ == '__main__':
     with Pool() as proc_pool:
         
         calc_fn = partial(calc_results, model_parameters_full=model_params_initial,\
-                        mp_locs=mp_locs, sim_funcs=sim_fs, data=datas,error_fill=0,\
+                        mp_locs=mp_locs, data=datas,error_fill=0,\
                         pool=proc_pool)
-            
+        run_biophysical = SimResults(calc_fn=calc_fn, sim_funcs=sim_fs)
+
         
-        made_model = make_model(calc_fn, keys_all, datas, sub_mps, model)
+        made_model = make_model(run_biophysical, keys_all, datas, model_params_initial, mp_locs, model)
         S = pymc.MCMC(made_model, db='pickle', dbname=db_path)
-        S.sample(iter=1000, burn=300, thin=1)
+        S.sample(iter=100, burn=0, thin=1, tune_throughout=True, save_interval=100)#, burn_till_tuned=True)
         S.db.close()
         print("Pickle File Written to:")
         print(model_name)

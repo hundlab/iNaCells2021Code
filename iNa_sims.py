@@ -174,10 +174,10 @@ if run_fits['Inactivation']:
 
 
     # #tau inactivation fast & slow
-    # keys_iin = [('21647304_2', 'Dataset C Adults'), ('21647304_2',	'Dataset D Adults'),\
-    #             ('21647304_2', 'Dataset C Pediactric'), ('21647304_2',	'Dataset D Pediactric')]
+    # keysf_iin = [('21647304_2', 'Dataset C Adults'), ('21647304_2', 'Dataset C Pediactric')]
+    # keyss_iin = [('21647304_2',	'Dataset D Adults'), ('21647304_2',	'Dataset D Pediactric')]
     # #('1323431_5',	'Dataset B fast'),('1323431_5',	'Dataset B slow'),\
-    # keys_all += keys_iin
+    # keys_all.append(keysf_iin)
     # process = partial(calcExpTauInact,func=biExp,x0=biExp_params,\
     #                   keep=[0,1],calc_dur=1)
     # setup_sim_args = {'sim_args':{'solver': solver,
@@ -188,9 +188,7 @@ if run_fits['Inactivation']:
     #                               'process' : process,
     #                               'post_process' : partial(func_norm, 
     #                                                         func=lambda vals: np.log(resort(vals)))}} 
-    # for i in range(0,len(keys_iin),2):
-    #     keyf = keys_iin[i]
-    #     keys = keys_iin[i+1]
+    # for keyf, keys in zip(keysf_iin, keyss_iin):
     #     key_dataf = func_norm_data(data[keyf], np.log)
     #     key_datas = func_norm_data(data[keys], np.log)
     #     key_exp_p = exp_parameters.loc[keyf]

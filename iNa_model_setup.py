@@ -5,7 +5,7 @@ Created on Thu Apr 16 16:13:10 2020
 
 @author: grat05
 """
-from iNa_models_ode import OHaraRudy_INa, Koval_ina, OHaraRudy_Gratz_INa
+from iNa_models_ode import OHaraRudy_INa, Koval_ina, OHaraRudy_Gratz_INa,OHaraRudy_wMark_INa
 import numpy as np
 
 
@@ -17,6 +17,7 @@ except NameError:
                 'Tau Act':      True,
                 }
 #model_name = "OHaraGratz"
+#model_name = "OHaraRudy_wMark_INa"
 #model_name = "OHara"
 model_name = "Koval"
 
@@ -96,6 +97,22 @@ elif model_name == "Koval":
     
 elif model_name == "OHaraGratz":
     model = OHaraRudy_Gratz_INa#models.iNa.OharaRudy_INa#OHaraRudy_INa
+    retOptions  = model().retOptions
+    dt = 0.05
+    
+    model_params_initial = np.zeros(model.num_params)
+
+    if run_fits['Recovery']:
+        mp_locs += [7] + list(range(13,16)) + [25,26] # [7]
+        
+    if run_fits['Inactivation']:
+        mp_locs += list(range(7,13)) + [24,27] #7,17
+        
+    if run_fits['Activation']:
+        mp_locs += list(range(2,7)) + [23]#list(range(2,5))
+        
+elif model_name == "OHaraRudy_wMark_INa":
+    model = OHaraRudy_wMark_INa#models.iNa.OharaRudy_INa#OHaraRudy_INa
     retOptions  = model().retOptions
     dt = 0.05
     

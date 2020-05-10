@@ -454,12 +454,14 @@ def get_exp_y(data, exp_parameters):
     return curr_real
 
 class SimResults():
-    def __init__(self, func, **kwargs):
-        self.func = func
+    def __init__(self, calc_fn, sim_funcs, **kwargs):
+        self.calc_fn = calc_fn
+        self.sim_funcs = sim_funcs
         self.keywords = kwargs
         self.cache_args = None
         self.res_cache = None
         self.call_counter = 0
+        self.cached_unused = set()
     def __call__(self, model_parameters, keys):
         model_parameters = np.array(model_parameters, dtype=float)
 #        if not self.cache_args is None:
@@ -470,13 +472,21 @@ class SimResults():
             # print(self.cache_args == model_parameters)
             # print('------------------------------------')
             self.cache_args = model_parameters
-            self.res_cache = self.func(model_parameters, **self.keywords)
+            sim_funcs_keys = {key: self.sim_funcs[key] for key in keys}
+            self.res_cache = self.calc_fn(model_parameters,
+                                          sim_funcs=sim_funcs_keys,
+                                          **self.keywords)
             self.call_counter += 1
-            print(self.call_counter)
-            
+            print("Num cached unused: ", len(self.cached_unused))
+            self.cached_unused = set(self.res_cache.keys())
+            print("Num calls: ", self.call_counter)
+
         res = []
         for key in keys:
+            print(key)
             res += list(self.res_cache[key])
+            if key in self.cached_unused:
+                self.cached_unused.remove(key)
         res = np.array(res)
         return res
 

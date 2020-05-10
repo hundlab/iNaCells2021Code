@@ -644,10 +644,10 @@ class OHaraRudy_wMark_INa():
 
         #h gate 9
         self.hss_tau = 6.086*np.exp(hss_tauFactor)
-        self.hfss_shift = 82.90+hss_shiftFactor
-        self.hsss_shift = 60*np.exp(hsss_shiftFactor)
+        self.hfss_shift = -87.90+hss_shiftFactor
+        self.hsss_shift = -60*np.exp(hsss_shiftFactor)
 
-        self.thf_max = 50*np.exp(thf_maxFactor)
+        self.thf_max = 30*np.exp(thf_maxFactor)
         self.thf_shift = -78+thf_shiftFactor
         self.thf_tau = 15*np.exp(thf_tauFactor)
         
@@ -685,8 +685,9 @@ class OHaraRudy_wMark_INa():
         self.naO = naO
         self.naI = naI
 
-        self.recArrayNames = pd.Index(["m","hf","hs","j","hsp","jp","mL","hL","hLp"])
-        self.state_vals = pd.Series([0,1,1,1,1,1,0,1,1], index=self.recArrayNames, dtype='float64')
+        self.recArrayNames = pd.Index(["m","hf","hs","j","i"])
+        self.state_vals = pd.Series([0,0.5,0.5,0,0], index=self.recArrayNames, dtype='float64')
+        self.num_states = len(self.recArrayNames)
         
 
         self.recArray = pd.DataFrame(columns=self.recArrayNames)
@@ -698,25 +699,42 @@ class OHaraRudy_wMark_INa():
 
     
     def calc_taus_ss(self, vOld):
+        
+        vOld = np.array(vOld,ndmin=1)
         if self.lastVal is not None and np.array_equal(self.lastVal[0], vOld):
             return self.lastVal[1]
         tau = ObjDict()
         ss = ObjDict()
         
+        num_a_b = 5
+        a = np.empty((num_a_b, len(vOld)))
+        b = np.empty((num_a_b, len(vOld)))
+        
+        
         ss.mss = 1.0 / (1.0 + np.exp((-(vOld + self.mss_shift+12)) / self.mss_tau));
         tau.tm = self.baseline/15+ 1.0 / (self.tm_mult1 * np.exp((vOld + 11.64) / self.tm_tau1) +
                            self.tm_mult2 * np.exp(-(vOld + 77.42) / self.tm_tau2));
+        
+        a[0] = ss.mss/tau.tm
+        b[0] = (1-ss.mss)/tau.tm
 
-        ss.hfss = 1.0 / (1 + np.exp((vOld + self.hfss_shift+5) / self.hss_tau));
+        ss.hfss = 1.0 / (1 + np.exp((vOld - self.hfss_shift+5) / self.hss_tau));
         tau.thf = self.baseline/5 + (self.thf_max-self.baseline/5) / (1+np.exp((vOld-self.thf_shift)/self.thf_tau))
+
+        a[1] = ss.hfss/tau.thf
+        b[1] = (1-ss.hfss)/tau.thf
 
 #        tau.thf = self.baseline/5 + 1/(6.149) * np.exp(-(vOld + 0.5096) / 15);
 #        if vOld < -100:
 #            tau.thf = self.baseline
 #        tau.thf = np.clip(tau.thf, a_max=15, a_min=None)
-
-        ss.hsss = 1.0 / (1 + np.exp((vOld + self.hsss_shift-5) / (self.hss_tau+8)));
+        hsss_shift_diff = -10
+        ss.hsss =  1.0 / (1 + np.exp((vOld - self.hfss_shift-hsss_shift_diff) / self.hss_tau));#ss.hfss##1.0 / (1 + np.exp((vOld + self.hsss_shift-5) / (self.hss_tau+8)));
         tau.ths = self.baseline + (self.ths_max-self.baseline) / (1+np.exp((vOld-self.ths_shift)/self.ths_tau))
+        
+        a[2] = ss.hsss/tau.ths
+        b[2] = (1-ss.hsss)/tau.ths
+        
 
 #        tau.ths = self.baseline + 1.0 / (0.3343) * np.exp(-(vOld + 5.730) / 30);
 #        if vOld < -100:
@@ -725,79 +743,107 @@ class OHaraRudy_wMark_INa():
 
         ss.jss = 1.0 / (1 + np.exp((vOld + self.jss_shift+5) / (self.jss_tau)));#hss;
         tau.tj = self.baseline + (self.tj_max-self.baseline)/(1+np.exp(-1/self.tj_tau*(vOld-self.tj_shift)))
-        if vOld > -60:
-            tau.tj = 100 + (self.tj_max-100)/(1+np.exp(2/self.tj_tau*(vOld-(self.tj_shift+40))))
+        mask = vOld > -60
+        tau.tj[mask] = 100 + (self.tj_max-100)/(1+np.exp(2/self.tj_tau*(vOld[mask]-(self.tj_shift+40))))
 
-        ss.hssp = 1.0 / (1 + np.exp((vOld + 89.1) / self.hssp_tau));
-        tau.thsp = self.tssp_mult * tau.ths;
+        a[3] = ss.jss/tau.tj
+        b[3] = (1-ss.jss)/tau.tj
+
+        hfs_ss = b[1]/(b[1]+b[2])#1/(1+np.exp((vOld--50)/20))
+        hfs_tau = self.baseline/5 + (400- self.baseline/5) / (1+np.exp(-(vOld--100)/1))
+
+        a[4] = hfs_ss/hfs_tau
+        b[4] = (1-hfs_ss)/hfs_tau
+        # ss.hssp = 1.0 / (1 + np.exp((vOld + 89.1) / self.hssp_tau));
+        # tau.thsp = self.tssp_mult * tau.ths;
 
 
-        tau.tjp = self.tjp_mult * tau.tj;
+        # tau.tjp = self.tjp_mult * tau.tj;
 
-        ss.mLss = 1.0 / (1.0 + np.exp((-(vOld + 42.85)) / self.mLss_tau));
-        tau.tmL = tau.tm;
+        # ss.mLss = 1.0 / (1.0 + np.exp((-(vOld + 42.85)) / self.mLss_tau));
+        # tau.tmL = tau.tm;
 
-        ss.hLss = 1.0 / (1.0 + np.exp((vOld + 87.61) / self.hLss_tau));
-        tau.thL = self.thL_baseline;
+        # ss.hLss = 1.0 / (1.0 + np.exp((vOld + 87.61) / self.hLss_tau));
+        # tau.thL = self.thL_baseline;
 
-        ss.hLssp = 1.0 / (1.0 + np.exp((vOld + 93.81) / self.hLssp_tau));
-        tau.thLp = self.thLp_mult * tau.thL;
+        # ss.hLssp = 1.0 / (1.0 + np.exp((vOld + 93.81) / self.hLssp_tau));
+        # tau.thLp = self.thLp_mult * tau.thL;
 
 #        tau.__dict__ = {key: min(max(value, 1e-8), 1e20) for key,value in tau.__dict__.items()}
-        self.lastVal = (vOld, (tau, ss))
-        return tau, ss
+        a = np.squeeze(a)
+        b = np.squeeze(b)
+        tau.__dict__ = {key: np.squeeze(value) for key,value in tau.__dict__.items()}
+        ss.__dict__ = {key: np.squeeze(value) for key,value in ss.__dict__.items()}
+        self.lastVal = (vOld, (tau, ss, a, b))
+        return self.lastVal[1]
     
     def jac(self, vOld):
-        vOld = np.array(vOld,ndmin=1)
-        d_vals = np.squeeze(np.zeros((9,len(vOld))))
+        d_vals = np.zeros(self.num_states)
         
-        tau, _ = self.calc_taus_ss(vOld)
+        tau, _, a, b = self.calc_taus_ss(vOld)
         
-        d_vals[0] = -1 / tau.tm
+        d_vals[0] = -b[0]#-1 / tau.tm
 
-        d_vals[1] = -1  / tau.thf
-        d_vals[2] = -1  / tau.ths
+        d_vals[1] = -(b[1]+a[4])#-1  / tau.thf#
+        d_vals[2] = -(b[2]+b[4])#-1  / tau.ths#
 
-        d_vals[3] = -1  / tau.tj
+        d_vals[3] = -(b[3]+a[2]+a[1])#-1  / tau.tj
+        
+        d_vals[4] = -a[3]
 
-        d_vals[4] = -1  / tau.thsp
+        # d_vals[4] = -1  / tau.thsp
 
 
-        d_vals[5] = -1  / tau.tjp
+        # d_vals[5] = -1  / tau.tjp
 
-        d_vals[6] = -1  / tau.tmL
+        # d_vals[6] = -1  / tau.tmL
 
-        d_vals[7] = -1  / tau.thL
+        # d_vals[7] = -1  / tau.thL
 
-        d_vals[8] = -1  / tau.thLp
+        # d_vals[8] = -1  / tau.thLp
 
 #        np.clip(d_vals, a_min=-1e15, a_max=None, out=d_vals)
 
-        return np.diag(d_vals)
+        d_vals = np.diag(d_vals)
+        d_vals[1,3] = a[1]
+        d_vals[1,2] = b[4]
+        d_vals[2,3] = a[2]
+        d_vals[2,1] = a[4]
+        d_vals[3,1] = b[1]
+        d_vals[3,2] = b[2]
+        d_vals[3,4] = a[3]
+        d_vals[4,3] = b[3]
+      
+
+        return d_vals
 
 
     def ddtcalc(self, vals, vOld):
         d_vals = np.zeros_like(vals)
         
-        tau, ss = self.calc_taus_ss(vOld)
+        tau, ss, a, b = self.calc_taus_ss(vOld)
         
-        d_vals[0] = (ss.mss-vals[0]) / tau.tm
+        d_vals[0] = (1-vals[0])*a[0] - vals[0]*b[0] #(ss.mss-vals[0]) / tau.tm
 
-        d_vals[1] = (ss.hfss-vals[1]) / tau.thf
-        d_vals[2] = (ss.hsss-vals[2]) / tau.ths
+        d_vals[1] = vals[3]*a[1]+vals[2]*b[4] - vals[1]*(b[1]+a[4])#(ss.hfss-vals[1]) / tau.thf#c*a[1] - vals[1]*b[1]#
+        d_vals[2] = vals[3]*a[2]+vals[1]*a[4] - vals[2]*(b[2]+b[4])#(ss.hsss-vals[2]) / tau.ths#c*a[2] - vals[2]*b[2]#
 
-        d_vals[3] = (ss.jss-vals[3]) / tau.tj
+        d_vals[3] = a[3]*vals[4]+b[1]*vals[1]+b[2]*vals[2] - vals[3]*(b[3]+a[2]+a[1])#(ss.jss-vals[3]) / tau.tj
 
-        d_vals[4] = (ss.hssp-vals[4]) / tau.thsp
+        d_vals[4] = b[3]*vals[3] - a[3]*vals[4]
+        
+        if not np.isclose(np.sum(vals[1:]),1):
+            print(np.sum(vals[1:]))
+        # d_vals[4] = (ss.hssp-vals[4]) / tau.thsp
 
 
-        d_vals[5] = (ss.jss-vals[5]) / tau.tjp
+        # d_vals[5] = (ss.jss-vals[5]) / tau.tjp
 
-        d_vals[6] = (ss.mLss-vals[6]) / tau.tmL
+        # d_vals[6] = (ss.mLss-vals[6]) / tau.tmL
 
-        d_vals[7] = (ss.hLss-vals[7]) / tau.thL
+        # d_vals[7] = (ss.hLss-vals[7]) / tau.thL
 
-        d_vals[8] = (ss.hLssp-vals[8]) / tau.thLp
+        # d_vals[8] = (ss.hLssp-vals[8]) / tau.thLp
 
 #        np.clip(d_vals, a_min=-1e15, a_max=1e15, out=d_vals)
         return d_vals
@@ -808,12 +854,12 @@ class OHaraRudy_wMark_INa():
     def calcCurrent(self, vals, vOld, ret=[True]*3, setRecArray=True):
         vals = np.array(vals)
         if len(vals.shape) == 1:
-            vals.shape = (9,-1)
-        elif vals.shape[0] != 9 and vals.shape[-1] == 9:
+            vals.shape = (self.num_states,-1)
+        elif vals.shape[0] != self.num_states and vals.shape[-1] == self.num_states:
             vals = vals.T
             
-        m,hf,hs,j,hsp,jp,mL,hL,hLp = vals
-            
+        m,hf,hs,j,i = vals
+
         self.recArray = self.recArray.append(pd.DataFrame(vals.T, columns=self.recArrayNames))
         
         ena = self.getRevPot()
@@ -821,26 +867,26 @@ class OHaraRudy_wMark_INa():
         Ahf = self.Ahf_mult;
         Ahs = 1.0 - Ahf;
         
-        h = Ahf * hf + Ahs * hs;
-        hp = Ahf * hf + Ahs *hsp;
+        h = hf + hs#Ahf * hf + Ahs * hs;#
+#        hp = Ahf * hf + Ahs *hsp;
         
-        fINap = (1.0 / (1.0 + self.KmCaMK / self.CaMKa));
+#        fINap = (1.0 / (1.0 + self.KmCaMK / self.CaMKa));
 #        oprob = self.m * self.m * self.m * ((1.0 - fINap) * h * self.j + fINap * hp * self.jp)
 
 #        oprob = m**3 * ((1.0 - fINap) *  h  + fINap * hp * jp)
-        oprob = m**3 * ((1.0 - fINap) *  h * j + fINap * hp * jp)
+        oprob = m**3 * h
 
         
         INa = (self.GNa if self.retOptions['G'] else 1) *\
                 (oprob if self.retOptions['Open'] else 1) *\
                 ((vOld - ena) if self.retOptions['RevPot'] else 1);
         
-        fINaLp = (1.0 / (1.0 + self.KmCaMK / self.CaMKa));
-        loprob = mL * ((1.0 - fINaLp) * hL + fINaLp * hLp)
+#        fINaLp = (1.0 / (1.0 + self.KmCaMK / self.CaMKa));
+#        loprob = mL * ((1.0 - fINaLp) * hL + fINaLp * hLp)
 
-        INaL = (self.GNaL if self.retOptions['G'] else 1)*\
-            (loprob if self.retOptions['Open'] else 1)*\
-            ((vOld - ena) if self.retOptions['RevPot'] else 1);
+        INaL = 0#(self.GNaL if self.retOptions['G'] else 1)*\
+            #(loprob if self.retOptions['Open'] else 1)*\
+#            ((vOld - ena) if self.retOptions['RevPot'] else 1);
         
         return (INa if self.retOptions['INa'] else 0)+\
             (INaL if self.retOptions['INaL'] else 0)
@@ -947,6 +993,45 @@ class Koval_ina:
         exp = np.exp
         a = np.zeros(10)
         b = np.zeros(10)
+        
+        
+        # P123a_max = 45
+        # P123a_tau = 6#15
+        # P123a_shift = -25
+        # P123a_shift_diff = 4-10
+        
+        # P4a_max = 2.53835453
+        # P4a_shift = -20
+        # P4a_tau = 16.6
+        
+        # P5a_max = 600
+        # P5a_shift = -160
+        # P5a_tau = 6
+        
+        # a[1] = P123a_max/((exp(-(vOld-(P123a_shift-P123a_shift_diff))/P123a_tau)) + 1)
+        # a[2] = P123a_max/((exp(-(vOld-(P123a_shift))/P123a_tau)) + 1)
+        # a[3] = P123a_max/((exp(-(vOld-(P123a_shift+P123a_shift_diff))/P123a_tau)) + 1)
+        
+        # a[4] = P4a_max/(exp(-(vOld-P4a_shift)/P4a_tau) + 1)
+        
+        # a[5] = P5a_max/(exp((vOld-P5a_shift)/P5a_tau) + 1)
+        
+        # a[6] = a[4]/self.P1a6
+        # a[7] = self.P1a7*a[4]
+        # a[8] = self.P1a8
+        # a[9] = self.RanolazineConc*self.P1a9
+
+        # b[1] = 400/(exp((vOld+137-P123a_shift_diff)/self.P2b1)+1)
+        # b[2] = 400/(exp((vOld+137)/self.P2b1)+1)
+        # b[3] = 400/(exp((vOld+137+P123a_shift_diff)/self.P2b1)+1)
+        
+        # b[5] = self.P1b5 + self.P2b5*(vOld+7.0)
+        # b[4] = (a[3]*a[4]*a[5])/(b[3]*b[5])
+        # b[6] = self.P1b6*a[5]
+        # b[7] = self.P1b7*a[5]
+        # b[8] = self.P1b8
+        # b[9] = self.P1b9
+        
         
         a[1] = self.P1a1/((self.P2a1*exp(-(vOld+2.5)/17))
                         + 0.20*exp(-(vOld+2.5)/150))

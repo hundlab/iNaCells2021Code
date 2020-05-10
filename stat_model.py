@@ -9,61 +9,72 @@ Created on Fri Apr 10 15:53:55 2020
 import pymc
 import numpy as np
 
-from iNa_fit_functions import SimResults
+def make_model(run_biophysical, key_groups, datas, model_params_initial, mp_locs, model):
+    ## create all sim means and variances per biophys model parameter
+    
+    # overall model parameter mean prior ~N
+    mu = np.zeros_like(mp_locs)
+    tau = 0.001* np.ones_like(mp_locs)
+    model_bounds = np.array(model.param_bounds)
+    model_param_mean = pymc.TruncatedNormal("model_param_mean",
+                               mu = mu,
+                               tau = tau, 
+                               a = model_bounds[mp_locs,0],
+                               b = model_bounds[mp_locs,1],
+                               value = model_params_initial[mp_locs])
+    
+    # overall model parameter precision prior ~Gamma
+    alpha = 0.001* np.ones_like(mp_locs)
+    beta = 0.001* np.ones_like(mp_locs)
+    value = 5* np.ones_like(mp_locs) #estimated from './optimize_Koval_0423_0326.pkl'
+    model_param_tau = pymc.Gamma("model_param_tau", 
+                              alpha = alpha,
+                              beta = beta,
+                              value = value)
+    
 
-def make_model(calc_fn, key_groups, datas, model_params_initial, model):
-    # biophysical model parameters
-    model_params = []
-    
-    for i in range(len(model_params_initial)):
-        # model parameter mean prior ~N
-        model_param_mean = pymc.TruncatedNormal("model_param_mean_{}".format(i),
-                                       mu = model_params_initial[i],
-                                       tau = .2, #estimated from './optimize_Koval_0423_0326.pkl'
-                                       a=model.param_bounds[i][0],
-                                       b=model.param_bounds[i][1],
-                                       value = model_params_initial[i])
-    
-        # model parameter variance prior ~IG
-        model_param_tau = pymc.Gamma("model_param_var_{}".format(i), 
-                                                  alpha=0.001, beta=0.001,
-                                                  value = 1)
-        
-        # model parameter  ~ N
-        model_param = pymc.TruncatedNormal("model_param_{}".format(i),
-                                         mu=model_param_mean,
-                                         tau=model_param_tau,
-                                         a=model.param_bounds[i][0],
-                                         b=model.param_bounds[i][1])
-        model_params.append(model_param)
-        
-    model_params = np.array(model_params)
-    
-    # likelihood
-    run_biophysical = SimResults(calc_fn)
-    biophysical_liks = []
+    # precision for each protocol ~ Gamma
+    alpha = 0.001* np.ones(len(key_groups))
+    beta = 0.001* np.ones(len(key_groups))
+    value = np.ones(len(key_groups))
+    error_tau = pymc.Gamma("error_tau",
+                              alpha = alpha,
+                              beta = beta,
+                              value = value)
+
+    model_param_sim = []    
+    biophys_liks = []
+    biophys_results = []
     for i, keys in enumerate(key_groups):
-        data = []
-        for key in keys:
-            data += list(datas[key][:,1])
-        data = np.array(data)
-        # error for each protocol ~ IG
-        error_tau = pymc.Gamma("error_var_{}".format(i),
-                                      alpha=0.001, beta=0.001,
-                                      value = 1)
+        for j, key in enumerate(keys):
+            data = np.array(datas[key][:,1])
+            
+            identif = "__{key[0]}__{key[1]}__gr{}".format(i, key=key)
+            
+            # model parameter  ~ N
+            model_param = pymc.TruncatedNormal("model_param"+identif,
+                                             mu = model_param_mean,
+                                             tau = model_param_tau,
+                                             a = model_bounds[mp_locs,0],
+                                             b = model_bounds[mp_locs,1])
         
-        # liklihood ~N
-        biophysical_results = pymc.Deterministic(eval=SimResults.__call__,
-                                   name='biophysical_results_{}'.format(i),
-                                   parents={'self': run_biophysical,
-                                            'model_parameters': model_params,
-                                            'keys': frozenset(keys)},
-                                   doc='run biophysical model')
+            # liklihood ~N
+            biophys_result = pymc.Deterministic(eval=run_biophysical,
+                                       name='biophys_res'+identif,
+                                       parents={'model_parameters': model_param,
+                                                'keys': frozenset([key])},
+                                       doc='run biophysical model',
+                                       cache_depth=15)
+    
+            biophys_lik = pymc.Normal('lik'+identif,
+                                          mu=biophys_result,
+                                          tau=error_tau[i],
+                                          value=data,
+                                          observed=True)
+            model_param_sim.append(model_param)
+            biophys_liks.append(biophys_lik)
+            biophys_results.append(biophys_result)
 
-        biophysical_lik = pymc.Normal('biophysical_lik',
-                                      mu=biophysical_results,
-                                      tau=error_tau,
-                                      value=data,
-                                      observed=True)
-        biophysical_liks.append(biophysical_lik)
-    return locals()
+    stat_model = [model_param_sim, model_param_mean, model_param_tau, biophys_liks, biophys_results, error_tau]
+    
+    return stat_model

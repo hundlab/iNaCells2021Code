@@ -42,12 +42,13 @@ keys_iin = [
 keys_keep += keys_iin
 
 
-#activation normalized to driving force
+##activation normalized to driving force
 keys_iin = [
             ('1323431_2',	'Dataset'),\
             ('8928874_7',	'Dataset D fresh'), ('8928874_7',	'Dataset D day 1'),\
             ('8928874_7',	'Dataset D day 3'), ('8928874_7',	'Dataset D day 5'),\
-            ('21647304_3',	'Dataset A Adults'), ('21647304_3',	'Dataset A Pediatrics')]
+            ('21647304_3',	'Dataset A Adults'), ('21647304_3',	'Dataset A Pediatrics')
+]
 keys_keep += keys_iin
 
 
@@ -62,7 +63,7 @@ keys_iin = [('1323431_8', 'Dataset A -140'), ('1323431_8',	'Dataset A -120'),\
 keys_keep += keys_iin
 
 
-# recovery normalized to preprepulse
+#recovery normalized to preprepulse
 keys_iin = [\
 ('7971163_6', 'Dataset -75'),\
 ('7971163_6', 'Dataset -85'),\
@@ -77,16 +78,16 @@ keys_keep += keys_iin
 
 
 
-#inactivation normalized to no prepulse
+##inactivation normalized to no prepulse
 keys_iin = [
     ('7971163_4', 'Dataset 32ms'), ('7971163_4', 'Dataset 64ms'),
             ('7971163_4', 'Dataset 128ms'), ('7971163_4', 'Dataset 256ms'),
               ('7971163_4', 'Dataset 512ms'),\
 
             ('8928874_8',	'Dataset C fresh'), ('8928874_8',	'Dataset C day 1'),\
-            ('8928874_8',	'Dataset C day 3'), ('8928874_8',	'Dataset C day 5')
+           ('8928874_8',	'Dataset C day 3'), ('8928874_8',	'Dataset C day 5')
             ]
-#('21647304_3',	'Dataset B Adults'), ('21647304_3',	'Dataset B Pediatrics')
+##('21647304_3',	'Dataset B Adults'), ('21647304_3',	'Dataset B Pediatrics')
 keys_keep += keys_iin
 
 
@@ -113,11 +114,12 @@ keys_keep += keys_iin
 
 
 
-# #tau inactivation fast & slow
-# keys_iin = [('21647304_2', 'Dataset C Adults'), ('21647304_2',	'Dataset D Adults'),\
-#             ('21647304_2', 'Dataset C Pediactric'), ('21647304_2',	'Dataset D Pediactric')]
-# #('1323431_5',	'Dataset B fast'),('1323431_5',	'Dataset B slow'),\
-# keys_keep += keys_iin
+
+#tau inactivation fast & slow
+keys_iin = [('21647304_2', 'Dataset C Adults'), ('21647304_2',	'Dataset D Adults'),\
+            ('21647304_2', 'Dataset C Pediactric'), ('21647304_2',	'Dataset D Pediactric')]
+#('1323431_5',	'Dataset B fast'),('1323431_5',	'Dataset B slow'),\
+keys_keep += keys_iin
 
 
 
@@ -135,8 +137,8 @@ datas = {key: data for key, data in datas.items() if key in keys_keep}
 
 import pickle
 res = pickle.load(open('./optimize_Koval_0423_0326.pkl','rb'))
-mp_locs = res.mp_locs
-sub_mps = res.x
+#mp_locs = res.mp_locs
+#sub_mps = res.x
 
 #------------------------------------------------------------------------------
 #------------------------------------------------------------------------------
