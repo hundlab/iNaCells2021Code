@@ -33,6 +33,16 @@ def make_model(run_biophysical, key_groups, datas, model_params_initial, mp_locs
                               value = value)
     
 
+    # model parameter  ~ N
+    model_param_index = np.arange(start=0,stop=len(mp_locs),step=1,dtype=int)
+    model_param_index = np.tile(model_param_index, (sum(map(len, key_groups)),1))
+    model_param_sim =  pymc.TruncatedNormal("model_param",
+                                     mu = model_param_mean[model_param_index],
+                                     tau = model_param_tau[model_param_index],
+                                     a = model_bounds[mp_locs,0][model_param_index],
+                                     b = model_bounds[mp_locs,1][model_param_index])
+
+
     # precision for each protocol ~ Gamma
     alpha = 0.001* np.ones(len(key_groups))
     beta = 0.001* np.ones(len(key_groups))
@@ -41,40 +51,43 @@ def make_model(run_biophysical, key_groups, datas, model_params_initial, mp_locs
                               alpha = alpha,
                               beta = beta,
                               value = value)
-
-    model_param_sim = []    
-    biophys_liks = []
-    biophys_results = []
+    keys_list = []
+    error_tau_index = []
+    data_array = []
+#    biophys_liks = []
+#    biophys_results = []
+    k = 0
     for i, keys in enumerate(key_groups):
         for j, key in enumerate(keys):
-            data = np.array(datas[key][:,1])
+            exp_data = list(datas[key][:,1])
+            data_array += exp_data
             
-            identif = "__{key[0]}__{key[1]}__gr{}".format(i, key=key)
-            
-            # model parameter  ~ N
-            model_param = pymc.TruncatedNormal("model_param"+identif,
-                                             mu = model_param_mean,
-                                             tau = model_param_tau,
-                                             a = model_bounds[mp_locs,0],
-                                             b = model_bounds[mp_locs,1])
+#            identif = "__{key[0]}__{key[1]}__gr{}".format(i, key=key)
         
-            # liklihood ~N
-            biophys_result = pymc.Deterministic(eval=run_biophysical,
-                                       name='biophys_res'+identif,
-                                       parents={'model_parameters': model_param,
-                                                'keys': frozenset([key])},
-                                       doc='run biophysical model',
-                                       cache_depth=15)
-    
-            biophys_lik = pymc.Normal('lik'+identif,
-                                          mu=biophys_result,
-                                          tau=error_tau[i],
-                                          value=data,
-                                          observed=True)
-            model_param_sim.append(model_param)
-            biophys_liks.append(biophys_lik)
-            biophys_results.append(biophys_result)
 
-    stat_model = [model_param_sim, model_param_mean, model_param_tau, biophys_liks, biophys_results, error_tau]
+#            model_param_sim.append(model_param)
+#            biophys_liks.append(biophys_lik)
+#            biophys_results.append(biophys_result)
+            keys_list.append(key)
+            error_tau_index += [i]*len(exp_data)
+            k += 1
+    error_tau_index = np.array(error_tau_index)
+    data_array = np.array(data_array)
+
+    # liklihood ~N
+    biophys_result = pymc.Deterministic(eval=run_biophysical,
+                               name='biophys_res',
+                               parents={'model_parameters_list': model_param_sim,
+                                        'keys': keys_list},
+                               doc='run biophysical model',
+                               dtype=np.ndarray,
+                               cache_depth=15)
+
+    biophys_lik = pymc.Normal('lik',
+                                  mu=biophys_result,
+                                  tau=error_tau[error_tau_index],
+                                  value=data_array,
+                                  observed=True)
+    stat_model = [model_param_sim, model_param_mean, model_param_tau, biophys_lik, biophys_result, error_tau]
     
     return stat_model

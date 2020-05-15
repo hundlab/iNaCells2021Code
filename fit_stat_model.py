@@ -54,7 +54,7 @@ if __name__ == '__main__':
         
         made_model = make_model(run_biophysical, keys_all, datas, model_params_initial, mp_locs, model)
         S = pymc.MCMC(made_model, db='pickle', dbname=db_path)
-        S.sample(iter=100, burn=0, thin=1, tune_throughout=True, save_interval=100)#, burn_till_tuned=True)
+        S.sample(iter=10000, burn=0, thin=1, tune_throughout=True, save_interval=100)#, burn_till_tuned=True)
         S.db.close()
         print("Pickle File Written to:")
         print(model_name)

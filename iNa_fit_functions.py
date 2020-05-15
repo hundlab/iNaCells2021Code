@@ -458,35 +458,47 @@ class SimResults():
         self.calc_fn = calc_fn
         self.sim_funcs = sim_funcs
         self.keywords = kwargs
-        self.cache_args = None
-        self.res_cache = None
+        self.cache = {}
         self.call_counter = 0
-        self.cached_unused = set()
-    def __call__(self, model_parameters, keys):
-        model_parameters = np.array(model_parameters, dtype=float)
+    def __call__(self, model_parameters_list, keys):
+        model_parameters_dict = {key: np.array(model_parameters, dtype=float) 
+                                 for key, model_parameters in 
+                                 zip(keys,model_parameters_list)}
 #        if not self.cache_args is None:
 #            print(np.abs(self.cache_args- model_parameters))
-        if self.cache_args is None or not np.array_equal(model_parameters, self.cache_args):
-            print(model_parameters)
+        model_params_to_run = {}
+        simfs_to_run = {}
+        for key, model_parameters in model_parameters_dict.items():
+            cache_key = key, tuple(model_parameters)
+            if not cache_key in self.cache:
+                model_params_to_run[key] = model_parameters
+                simfs_to_run[key] = self.sim_funcs[key]
+            prev_cache = np.array([np.array(mps) for c_key, mps in self.cache if c_key == key])
+#            if len(prev_cache) > 0:
+#                min_loc = np.argmin(np.sum(prev_cache - model_parameters, axis=1))
+#                print((prev_cache - model_parameters)[min_loc,:])
+            # print(model_parameters)
             # print(self.cache_args)
             # print(self.cache_args == model_parameters)
             # print('------------------------------------')
-            self.cache_args = model_parameters
-            sim_funcs_keys = {key: self.sim_funcs[key] for key in keys}
-            self.res_cache = self.calc_fn(model_parameters,
-                                          sim_funcs=sim_funcs_keys,
-                                          **self.keywords)
-            self.call_counter += 1
-            print("Num cached unused: ", len(self.cached_unused))
-            self.cached_unused = set(self.res_cache.keys())
-            print("Num calls: ", self.call_counter)
+            
+        new_cache = self.calc_fn(model_params_to_run,
+                                      sim_funcs=simfs_to_run,
+                                      **self.keywords)
+        for key, res in new_cache.items():
+            self.cache[(key, tuple(model_params_to_run[key]))] = res
+#        self.cached_unused.update(new_cache.keys())
+        self.call_counter += 1
+        print("Num calls: ", self.call_counter)
 
         res = []
         for key in keys:
-            print(key)
-            res += list(self.res_cache[key])
-            if key in self.cached_unused:
-                self.cached_unused.remove(key)
+#            print(key)
+            res += list(self.cache[(key, tuple(model_parameters_dict[key]))])
+#            if key in self.cached_unused:
+#                self.cached_unused.remove(key)
+        print("Num new cached: ", len(new_cache))
+
         res = np.array(res)
         return res
 
@@ -496,11 +508,14 @@ def calc_results(model_parameters_part, model_parameters_full, sim_funcs,\
                        exp_params=None,error_fill=np.inf):
     if mp_locs is None:
         mp_locs = np.ones_like(model_parameters_full, dtype=bool)
-    model_parameters_full[mp_locs] = model_parameters_part
     
     vals_sims = {}
     sims_iters = {}
     for key, sim_func in sim_funcs.items():
+        if isinstance(model_parameters_part, dict):
+            model_parameters_full[mp_locs] = model_parameters_part[key]
+        else:
+            model_parameters_full[mp_locs] = model_parameters_part
         sims_iter = sim_func(model_parameters_full, pool=pool)
         sims_iters[key] = sims_iter
         next(sims_iter)
