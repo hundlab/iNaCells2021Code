@@ -718,7 +718,7 @@ class OHaraRudy_wMark_INa():
         a[0] = ss.mss/tau.tm
         b[0] = (1-ss.mss)/tau.tm
 
-        ss.hfss = 1.0 / (1 + np.exp((vOld - self.hfss_shift+5) / self.hss_tau));
+        ss.hfss = 1.0 / (1 + np.exp((vOld + self.hsss_shift+100) / (self.hss_tau+8)))#1.0 / (1 + np.exp((vOld - self.hfss_shift+5) / self.hss_tau));
         tau.thf = self.baseline/5 + (self.thf_max-self.baseline/5) / (1+np.exp((vOld-self.thf_shift)/self.thf_tau))
 
         a[1] = ss.hfss/tau.thf
@@ -729,7 +729,7 @@ class OHaraRudy_wMark_INa():
 #            tau.thf = self.baseline
 #        tau.thf = np.clip(tau.thf, a_max=15, a_min=None)
         hsss_shift_diff = -10
-        ss.hsss =  1.0 / (1 + np.exp((vOld - self.hfss_shift-hsss_shift_diff) / self.hss_tau));#ss.hfss##1.0 / (1 + np.exp((vOld + self.hsss_shift-5) / (self.hss_tau+8)));
+        ss.hsss = ss.hfss# 1.0 / (1 + np.exp((vOld - self.hfss_shift-hsss_shift_diff) / self.hss_tau));#ss.hfss##1.0 / (1 + np.exp((vOld + self.hsss_shift-5) / (self.hss_tau+8)));
         tau.ths = self.baseline + (self.ths_max-self.baseline) / (1+np.exp((vOld-self.ths_shift)/self.ths_tau))
         
         a[2] = ss.hsss/tau.ths
@@ -741,10 +741,12 @@ class OHaraRudy_wMark_INa():
 #            tau.ths = self.baseline
 #        tau.ths = np.clip(tau.ths, a_max=20, a_min=None)
 
-        ss.jss = 1.0 / (1 + np.exp((vOld + self.jss_shift+5) / (self.jss_tau)));#hss;
+        ss.jss = 1.0 / (1 + np.exp((vOld + self.jss_shift+5+10) / (self.jss_tau)));#hss;
         tau.tj = self.baseline + (self.tj_max-self.baseline)/(1+np.exp(-1/self.tj_tau*(vOld-self.tj_shift)))
         mask = vOld > -60
         tau.tj[mask] = 100 + (self.tj_max-100)/(1+np.exp(2/self.tj_tau*(vOld[mask]-(self.tj_shift+40))))
+        tau.tj *= 0.001
+#        tau.tj = 0.1
 
         a[3] = ss.jss/tau.tj
         b[3] = (1-ss.jss)/tau.tj
@@ -752,8 +754,9 @@ class OHaraRudy_wMark_INa():
         hfs_ss = b[1]/(b[1]+b[2])#1/(1+np.exp((vOld--50)/20))
         hfs_tau = self.baseline/5 + (400- self.baseline/5) / (1+np.exp(-(vOld--100)/1))
 
-        a[4] = hfs_ss/hfs_tau
-        b[4] = (1-hfs_ss)/hfs_tau
+        a[4] = 0#hfs_ss/hfs_tau
+        b[4] = 0#(1-hfs_ss)/hfs_tau
+        
         # ss.hssp = 1.0 / (1 + np.exp((vOld + 89.1) / self.hssp_tau));
         # tau.thsp = self.tssp_mult * tau.ths;
 
