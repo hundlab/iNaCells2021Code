@@ -6,8 +6,10 @@ Created on Fri Jan 31 08:37:41 2020
 @author: grat05
 """
 import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
 from scipy import optimize
+from scipy import integrate
 from functools import partial
 from sklearn.preprocessing import minmax_scale
 
@@ -22,15 +24,11 @@ biExp_params = np.array([-1,1,-1,1000,0])
 def isList(thing):
     return isinstance(thing, (list, tuple, np.ndarray))
 
-def flatten_durs(durs, sub_sim_pos):
-    return [val[sub_sim_pos] if isList(val) else val\
-                 for val in durs]
-
 def plotEach(times, current, **kwargs):
     plt.plot(times, current)
 
 def peakCurr(times, current, sub_sim_pos, durs, durn=None, **kwargs):
-    flat_durs = flatten_durs(durs, sub_sim_pos)
+    flat_durs = durs[sub_sim_pos,:]
     return current[getPeak(times, current, durn, flat_durs)[0]]
 
 def biLinear(t, A1, B1, A2, B2):
@@ -85,7 +83,7 @@ def lstsq_wrap(fun, x0, bounds=None, **kwargs):
 def calcExpTauInact(times, current, func, x0, sub_sim_pos, durs, calc_dur = 1, keep=None, bounds=(-np.inf, np.inf), **kwargs):
     if keep is None:
         keep = np.ones_like(x0, dtype=bool)
-    flat_durs = flatten_durs(durs, sub_sim_pos)
+    flat_durs = durs[sub_sim_pos,:]
     startt = np.sum(flat_durs[:calc_dur])
     stopt  = startt + flat_durs[calc_dur]
     stimMask = (startt < times) & (times < stopt)
@@ -153,7 +151,7 @@ def calcExpTauAct(times, current, func, x0, sub_sim_pos, durs, calc_dur = (0,1),
     if keep is None:
         keep = np.ones_like(x0, dtype=bool)
 
-    flat_durs = flatten_durs(durs, sub_sim_pos)
+    flat_durs = durs[sub_sim_pos,:]
     startt = np.sum(flat_durs[:calc_dur[0]])
     stopt  = startt + np.sum(flat_durs[calc_dur[0]:calc_dur[1]]) + flat_durs[calc_dur[1]]
     stimMask = (startt < times) & (times < stopt)
@@ -192,7 +190,7 @@ def getPeak(times, current, dur_loc, flat_durs):
 
 #I2/I1
 def normalize2prepulse(times, current, sub_sim_pos, durs, pulse1=1, pulse2=3, **kwargs):
-    flat_durs = flatten_durs(durs, sub_sim_pos)
+    flat_durs = durs[sub_sim_pos,:]
     peak = []
     peak.append(current[getPeak(times, current, pulse1, flat_durs)[0]])
     peak.append(current[getPeak(times, current, pulse2, flat_durs)[0]])
@@ -201,7 +199,7 @@ def normalize2prepulse(times, current, sub_sim_pos, durs, pulse1=1, pulse2=3, **
     return peak[1]/peak[0]
 
 def normalized2val(times, current, sub_sim_pos, durs, val, durn, **kwargs):
-    flat_durs = flatten_durs(durs, sub_sim_pos)
+    flat_durs = durs[sub_sim_pos,:]
 
     peak_loc,_,_ = getPeak(times, current, durn, flat_durs)
     peak = current[peak_loc]
@@ -209,6 +207,36 @@ def normalized2val(times, current, sub_sim_pos, durs, val, durn, **kwargs):
 #    plotEach(times, current, **kwargs)
 #    print(np.round(peak,2), peak_loc)
     return peak/val
+
+def integrateDur(times, current, dur_loc, durs, sub_sim_pos, begin_offset=0, **kwargs):
+    flat_durs = durs[sub_sim_pos,:]
+    if isinstance(dur_loc, tuple):
+        begint = np.sum(flat_durs[:dur_loc[0]]) + begin_offset
+        endt  = begint + np.sum(flat_durs[dur_loc[0]:dur_loc[1]]) + flat_durs[dur_loc[1]]
+    elif dur_loc is None:
+        begint = begin_offset
+        endt = times[-1]
+    else:
+        begint = sum(flat_durs[:dur_loc]) + begin_offset
+        endt = begint + flat_durs[dur_loc]
+    locs = np.where((times>begint)&(times<endt))[0]
+    integ = integrate.simps(y=current[locs], x=times[locs])
+    return integ
+
+def medianValFromEnd(times, current, dur_loc, durs, sub_sim_pos, window=5, **kwargs):
+    flat_durs = durs[sub_sim_pos,:]
+    if dur_loc is None:
+        endt = times[-1]
+        begint = endt - window
+    else:
+        endt = sum(flat_durs[:dur_loc]) + flat_durs[dur_loc]
+        begint =  endt - window
+    locs = np.where((times>=begint)&(times<=endt))[0]
+    return np.median(current[locs])
+
+def multipleProcess(processes, **kwargs):
+    res = [process(**kwargs) for process in processes]
+    return res
 
 def standardSolver(flat_durs, flat_voltages, run_model, dt):
     run = True
@@ -249,9 +277,10 @@ class ModelWrapper():
         vOld = self.flat_voltages[loc]
         return vOld
     def __call__(self, t, vals):
-        if self.call_count > 20000:
+        if self.call_count > 20000 and self.call_count/t > 20:
             print("Error too many calls", self.call_count)
-            raise ValueError
+            print(t/self.call_count)
+#            raise ValueError
         self.call_count += 1
         vOld = self.getvOld(t)
         ddt_vals =  self.run_model.ddtcalc(vals, vOld)
@@ -287,7 +316,10 @@ def scipySolver(flat_durs, flat_voltages, run_model, solver, dt=None):
     iNa = run_model.calcCurrent(res.y, vMs)
     return times, iNa, vMs
 
-def solveAndProcesses(flat_durs, flat_voltages, run_model, solver, dt, process, sub_sim_pos, durs):
+def solveAndProcesses(durs, voltages, run_model, solver, dt, process, sub_sim_pos):
+    flat_durs = durs[sub_sim_pos,:]
+    flat_voltages = voltages[sub_sim_pos,:]
+    
     if solver is None:
         times, iNa, vMs = standardSolver(flat_durs, flat_voltages, run_model, dt)
     else:
@@ -310,7 +342,7 @@ def solveAndProcesses(flat_durs, flat_voltages, run_model, solver, dt, process, 
     processed = process(times=times,current=iNa,vMs=vMs,sub_sim_pos=sub_sim_pos,durs=durs)
 
 
-    return processed
+    return np.array(processed)
 
 # def scipySolver(flat_durs, flat_voltages, run_model, solver, dt=None):
 #     max_step = np.min(flat_durs[flat_durs > 0])/2
@@ -324,39 +356,25 @@ def solveAndProcesses(flat_durs, flat_voltages, run_model, solver, dt, process, 
 #     iNa = run_model.calcCurrent(res.y, vMs)
 #     return times, iNa, vMs
 
-def run_sim(model_parameters, model, voltages, durs, sim_param, process, post_process,\
+def run_sim(model_parameters, model, voltages, durs, sim_param, process, post_process,
             dt=0.005, solver=None, retOptions=None, pool=None):#ret = [True]*3
     out = []
-    try:
-        counterDur = max(map(len, filter(isList,durs)))
-    except ValueError:
-        counterDur = 0
-    try:
-        counterVm = max(map(len, filter(isList,voltages)))
-    except ValueError:
-        counterVm = 0
-    counter = counterDur+counterVm
-    if counter == 0:
-        counter = 1
     
     model_args = list(model_parameters)
     model_kwargs = {'TEMP': sim_param['TEMP'], 'naO': sim_param['naO'], 'naI': sim_param['naI']}
-    for sub_sim_pos in range(counter):
+    for sub_sim_pos in range(voltages.shape[0]):
         run_model = model(*model_args, **model_kwargs)
         if not retOptions is None:
             run_model.retOptions = retOptions
-            
-        flat_durs = np.clip(flatten_durs(durs, sub_sim_pos), a_min=0, a_max=None)
-        flat_voltages = flatten_durs(voltages, sub_sim_pos)
 
         if pool is not None:
             processed = pool.apply_async(solveAndProcesses, 
-                                                   (flat_durs, flat_voltages, \
+                                                   (durs, voltages, \
                                                     run_model, solver, dt, \
-                                                    process, sub_sim_pos, durs))
+                                                    process, sub_sim_pos))
         else:
-            processed = solveAndProcesses(flat_durs, flat_voltages, run_model, \
-                                          solver, dt,  process, sub_sim_pos, durs)
+            processed = solveAndProcesses(durs, voltages, run_model, \
+                                          solver, dt,  process, sub_sim_pos)
         
         out.append(processed)
     
@@ -369,78 +387,83 @@ def run_sim(model_parameters, model, voltages, durs, sim_param, process, post_pr
     out = np.array(out)
     if not post_process is None:
         out =  post_process(np.array(out))
-    yield out
+    yield np.squeeze(out)
 
-def setup_sim(model, data, exp_parameters, hold_dur=1, sim_args={}): #ret = [True]*3
+def setup_sim_vc(data, exp_parameters, hold_dur, data_len=None):
+    step_names = [('potential 1 (mV)', 'duration (ms)'),
+                  ('holding potential (mV)', 'IPI (ms)'),
+                  ('potential 2 (mV)', 'duration 2 (ms)'),
+                  ('holding potential (mV)', 'IPI 2 (ms)'),
+                  ('potential 3 (mV)', 'duration 3 (ms)')]
+
+    if data_len is None:
+        base_params = np.ones_like(data[:,0])
+    else:
+        base_params = np.ones(data_len)
     voltages = []
     durs = []
+    try:
+        holding_pot = exp_parameters['holding potential (mV)']
+        voltages = [base_params*holding_pot]
+        durs = [base_params*hold_dur]
+    except KeyError:
+        ValueError("No holding potential")
+    
+    for i, step_name in enumerate(step_names):
+        try:
+            voltage_name, dur_name = step_name
+            voltage = exp_parameters[voltage_name]
+            dur = exp_parameters[dur_name]
+            
+            if voltage == 'x':
+                voltage = data[:,0]
+            elif pd.isna(voltage):
+                raise KeyError
+                
+            if dur == 'x':
+                dur = data[:,0]
+            elif pd.isna(dur):
+                raise KeyError
+                
+            voltages.append(base_params*voltage)
+            durs.append(base_params*dur)
+        except KeyError:
+            pass
+    
+    voltages = np.array(voltages)
+    durs = np.clip(np.array(durs), a_min=0, a_max=None)
+
+    return voltages.T, durs.T
+
+def setup_sim(model, data, exp_parameters, hold_dur=1, num_repeats=5, data_len=None, sim_args={}): #ret = [True]*3
+    voltages, durs = setup_sim_vc(data, exp_parameters, hold_dur, data_len=data_len,)
+
     sim_param = {}
     sim_param['naO'] = exp_parameters['[Na]o (mM)']
     sim_param['naI'] = exp_parameters['[Na]I (mM)']
     sim_param['TEMP'] = exp_parameters['temp ( K )']
+
     try:
-        #holding
-        holding_pot = exp_parameters['holding potential (mV)']
-        voltages.append(holding_pot)
-        durs.append(hold_dur)
-
-        #pulse 1
-        duration = exp_parameters['duration (ms)']
-        if duration == 'x':
-            durs.append(data[:,0])
+        repeat_frq = exp_parameters['Repeat (Hz)']
+        if repeat_frq == 'x':
+            repeat_dur = 1000/data[:,0]
         else:
-            durs.append(duration)
-        potential = exp_parameters['potential 1 (mV)']
-        if potential == 'x':
-            voltages.append(data[:,0])
-        else:
-            voltages.append(potential)
-
-        #IPI 1
-        IPI = exp_parameters['IPI (ms)']
-        if IPI == 'x':
-            durs.append(data[:,0])
-        else:
-            durs.append(IPI)
-        voltages.append(holding_pot)
-
-        #pulse 2
-        duration = exp_parameters['duration 2 (ms)']
-        if duration == 'x':
-            durs.append(data[:,0])
-        else:
-            durs.append(duration)
-        potential = exp_parameters['potential 2 (mV)']
-        if potential == 'x':
-            voltages.append(data[:,0])
-        else:
-            voltages.append(potential)
-
-        #IPI 2
-        IPI = exp_parameters['IPI 2 (ms)']
-        if IPI == 'x':
-            durs.append(data[:,0])
-        else:
-            durs.append(IPI)
-        voltages.append(holding_pot)
-
-         #pulse 3
-        duration = exp_parameters['duration 3 (ms)']
-        if duration == 'x':
-            durs.append(data[:,0])
-        else:
-            durs.append(duration)
-        potential = exp_parameters['potential 3 (mV)']
-        if potential == 'x':
-            voltages.append(data[:,0])
-        else:
-            voltages.append(potential)
-
+            if pd.isna(repeat_frq):
+                raise KeyError
+            repeat_dur = 1000/repeat_frq
+            
+        rep_dur = np.sum(durs, axis=1)
+        rest_dur = repeat_dur - rep_dur
+        if np.min(rest_dur) < 0:
+            raise ValueError("Repeat Frequency smaller than protocol duration")
+        hold_potential = voltages[:,0]
+        voltages = np.concatenate((voltages, hold_potential[...,None]), axis=1)
+        voltages = np.tile(voltages, (1,num_repeats))
+        durs = np.concatenate((durs, rest_dur[...,None]), axis=1)
+        durs = np.tile(durs, (1,num_repeats))
     except KeyError:
         pass
 
-    durs = list(filter(lambda x: isList(x) or ~np.isnan(x), durs))
-    voltages  = list(filter(lambda x: isList(x) or ~np.isnan(x), voltages))
     f_call = partial(run_sim, model=model, voltages=voltages, durs=durs,\
                      sim_param=sim_param, **sim_args)
     return voltages, durs, f_call
@@ -449,7 +472,7 @@ def setup_sim(model, data, exp_parameters, hold_dur=1, sim_args={}): #ret = [Tru
 def get_exp_y(data, exp_parameters):
     curr_real = data[:,1]
     capacitance = exp_parameters['capacitance (pF)']
-    if not np.isnan(capacitance):
+    if not pd.isna(capacitance):
         curr_real = curr_real*1000/capacitance
     return curr_real
 
@@ -458,7 +481,7 @@ class SimResults():
         self.calc_fn = calc_fn
         self.sim_funcs = sim_funcs
         self.keywords = kwargs
-        self.cache = {}
+#        self.cache = {}
         self.call_counter = 0
     def __call__(self, model_parameters_list, keys):
         model_parameters_dict = {key: np.array(model_parameters, dtype=float) 
@@ -469,36 +492,20 @@ class SimResults():
         model_params_to_run = {}
         simfs_to_run = {}
         for key, model_parameters in model_parameters_dict.items():
-            cache_key = key, tuple(model_parameters)
-            if not cache_key in self.cache:
-                model_params_to_run[key] = model_parameters
-                simfs_to_run[key] = self.sim_funcs[key]
-            prev_cache = np.array([np.array(mps) for c_key, mps in self.cache if c_key == key])
-#            if len(prev_cache) > 0:
-#                min_loc = np.argmin(np.sum(prev_cache - model_parameters, axis=1))
-#                print((prev_cache - model_parameters)[min_loc,:])
-            # print(model_parameters)
-            # print(self.cache_args)
-            # print(self.cache_args == model_parameters)
-            # print('------------------------------------')
+            model_params_to_run[key] = model_parameters
+            simfs_to_run[key] = self.sim_funcs[key]
+#            prev_cache = np.array([np.array(mps) for c_key, mps in self.cache if c_key == key])
             
         new_cache = self.calc_fn(model_params_to_run,
                                       sim_funcs=simfs_to_run,
                                       **self.keywords)
-        for key, res in new_cache.items():
-            self.cache[(key, tuple(model_params_to_run[key]))] = res
-#        self.cached_unused.update(new_cache.keys())
+
         self.call_counter += 1
         print("Num calls: ", self.call_counter)
 
         res = []
         for key in keys:
-#            print(key)
-            res += list(self.cache[(key, tuple(model_parameters_dict[key]))])
-#            if key in self.cached_unused:
-#                self.cached_unused.remove(key)
-        print("Num new cached: ", len(new_cache))
-
+            res += list(new_cache[key])
         res = np.array(res)
         return res
 
@@ -512,6 +519,7 @@ def calc_results(model_parameters_part, model_parameters_full, sim_funcs,\
     vals_sims = {}
     sims_iters = {}
     for key, sim_func in sim_funcs.items():
+#        print(key)
         if isinstance(model_parameters_part, dict):
             model_parameters_full[mp_locs] = model_parameters_part[key]
         else:
@@ -591,7 +599,9 @@ def calc_diff_multiple(model_parameters_part, model_parameters_full, sim_func,\
                 if exp_params is None:
                     plt.figure("Overall")
                 else:
-                    plt.figure(exp_params.loc[key, 'Sim Group'])
+                    figname = exp_params.loc[key, 'Sim Group']
+                    figname = figname if not pd.isna(figname) else 'Missing Label'
+                    plt.figure(figname)
                 plt.plot(sub_dat[:,0], vals_sim, label=key)
                 plt.scatter(sub_dat[:,0], sub_dat[:,1])
                 plt.legend()

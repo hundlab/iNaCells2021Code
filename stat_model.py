@@ -9,18 +9,21 @@ Created on Fri Apr 10 15:53:55 2020
 import pymc
 import numpy as np
 
-def make_model(run_biophysical, key_groups, datas, model_params_initial, mp_locs, model):
+def make_model(run_biophysical, key_groups, datas, model_params_initial, mp_locs, model, temperatures = None):
     ## create all sim means and variances per biophys model parameter
+    
+    num_sims = sum(map(len, key_groups))
+
     
     # overall model parameter mean prior ~N
     mu = np.zeros_like(mp_locs)
     tau = 0.001* np.ones_like(mp_locs)
     model_bounds = np.array(model.param_bounds)
-    model_param_mean = pymc.TruncatedNormal("model_param_mean",
+    model_param_mean = pymc.Normal("model_param_mean",
                                mu = mu,
                                tau = tau, 
-                               a = model_bounds[mp_locs,0],
-                               b = model_bounds[mp_locs,1],
+#                               a = model_bounds[mp_locs,0],
+#                               b = model_bounds[mp_locs,1],
                                value = model_params_initial[mp_locs])
     
     # overall model parameter precision prior ~Gamma
@@ -33,14 +36,44 @@ def make_model(run_biophysical, key_groups, datas, model_params_initial, mp_locs
                               value = value)
     
 
-    # model parameter  ~ N
-    model_param_index = np.arange(start=0,stop=len(mp_locs),step=1,dtype=int)
-    model_param_index = np.tile(model_param_index, (sum(map(len, key_groups)),1))
-    model_param_sim =  pymc.TruncatedNormal("model_param",
-                                     mu = model_param_mean[model_param_index],
-                                     tau = model_param_tau[model_param_index],
-                                     a = model_bounds[mp_locs,0][model_param_index],
-                                     b = model_bounds[mp_locs,1][model_param_index])
+    if not temperatures is None:
+        # temerature beta
+        temperature_arr = np.empty(num_sims)
+        k = 0
+        for i, keys in enumerate(key_groups):
+            for j, key in enumerate(keys):
+                #temperature adjusted to minimum in group
+                temperature_arr[k] = temperatures[key] -290.15
+                k += 1
+                
+        #temperature coefficiant ~ N
+        mu = np.zeros_like(mp_locs)# update to fit q10 (0.2)
+        tau = 0.001* np.ones_like(mp_locs) # .1
+        b_temp = pymc.Normal("b_temp",
+                                   mu = mu,
+                                   tau = tau, 
+                                   value = mu)
+        
+        #linear mean
+        model_param_index = np.arange(start=0,stop=len(mp_locs),step=1,dtype=int)
+        model_param_index = np.tile(model_param_index, (num_sims,1))
+        mu = model_param_mean[model_param_index] + b_temp[model_param_index]*temperature_arr[...,None]
+
+        # model parameter  ~ N
+        model_param_sim =  pymc.TruncatedNormal("model_param",
+                                         mu = mu,
+                                         tau = model_param_tau[model_param_index],
+                                         a = model_bounds[mp_locs,0][model_param_index],
+                                         b = model_bounds[mp_locs,1][model_param_index])
+    else:
+        # model parameter  ~ N
+        model_param_index = np.arange(start=0,stop=len(mp_locs),step=1,dtype=int)
+        model_param_index = np.tile(model_param_index, (num_sims,1))
+        model_param_sim =  pymc.TruncatedNormal("model_param",
+                                         mu = model_param_mean[model_param_index],
+                                         tau = model_param_tau[model_param_index],
+                                         a = model_bounds[mp_locs,0][model_param_index],
+                                         b = model_bounds[mp_locs,1][model_param_index])        
 
 
     # precision for each protocol ~ Gamma
@@ -88,6 +121,18 @@ def make_model(run_biophysical, key_groups, datas, model_params_initial, mp_locs
                                   tau=error_tau[error_tau_index],
                                   value=data_array,
                                   observed=True)
-    stat_model = [model_param_sim, model_param_mean, model_param_tau, biophys_lik, biophys_result, error_tau]
+    stat_model = [model_param_sim, model_param_mean, model_param_tau, 
+                  biophys_lik, biophys_result, error_tau]
+    if not temperatures is None:
+        stat_model.append(b_temp)
+        
+    # import pickle
+    # trace_file = './mcmc_Koval_0511_1609_2.pickle'
+    # with open(trace_file,'rb') as file:
+    #     db = pickle.load(file)
+    # prev_state = db['_state_']['stochastics']
+    # for var in stat_model:
+    #     if var.__name__ in prev_state:
+    #         var.value = prev_state[var.__name__]
     
     return stat_model

@@ -59,11 +59,12 @@ keys_iin = [('1323431_8', 'Dataset A -140'), ('1323431_8',	'Dataset A -120'),\
             ('1323431_8',	'Dataset A -100'),\
             ('21647304_3',	'Dataset C Adults'), ('21647304_3',	'Dataset C Pediatrics'),\
             ('8928874_9', 'Dataset fresh'), ('8928874_9', 'Dataset day 1'),\
-            ('8928874_9', 'Dataset day 3'), ('8928874_9', 'Dataset day 5')]
+            ('8928874_9', 'Dataset day 3'), ('8928874_9', 'Dataset day 5')
+]
 keys_keep += keys_iin
 
 
-#recovery normalized to preprepulse
+# #recovery normalized to preprepulse
 keys_iin = [\
 ('7971163_6', 'Dataset -75'),\
 ('7971163_6', 'Dataset -85'),\
@@ -85,16 +86,17 @@ keys_iin = [
               ('7971163_4', 'Dataset 512ms'),\
 
             ('8928874_8',	'Dataset C fresh'), ('8928874_8',	'Dataset C day 1'),\
-           ('8928874_8',	'Dataset C day 3'), ('8928874_8',	'Dataset C day 5')
+            ('8928874_8',	'Dataset C day 3'), ('8928874_8',	'Dataset C day 5')
             ]
 ##('21647304_3',	'Dataset B Adults'), ('21647304_3',	'Dataset B Pediatrics')
 keys_keep += keys_iin
 
 
-# inactivation normalized to first
+#inactivation normalized to first
 keys_iin = [('7971163_5',	'Dataset A -65'), ('7971163_5',	'Dataset A -75'),\
             ('7971163_5',	'Dataset A -85'), ('7971163_5',	'Dataset A -95'),\
-            ('7971163_5',	'Dataset A -105')]
+            ('7971163_5',	'Dataset A -105')
+            ]
 keys_keep += keys_iin
 
 
@@ -123,9 +125,9 @@ keys_keep += keys_iin
 
 
 
-## #tau inactivation normalized to first
-## keys_iin = [('1323431_6',	'Dataset -80'), ('1323431_6',	'Dataset -100')]
-## keys_keep += keys_iin
+# #tau inactivation normalized to first
+# keys_iin = [('1323431_6',	'Dataset -80'), ('1323431_6',	'Dataset -100')]
+# keys_keep += keys_iin
 
 
 #------------------------------------------------------------------------------
@@ -142,7 +144,7 @@ res = pickle.load(open('./optimize_Koval_0423_0326.pkl','rb'))
 
 #------------------------------------------------------------------------------
 #------------------------------------------------------------------------------
-iNa_fit_functions.plot1 = True#False#True #sim
+iNa_fit_functions.plot1 = True#True#True #sim
 iNa_fit_functions.plot2 = True #diff
 iNa_fit_functions.plot3 = False #tau
 

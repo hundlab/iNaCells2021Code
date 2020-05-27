@@ -6,7 +6,10 @@ Created on Thu Apr 16 16:13:10 2020
 @author: grat05
 """
 from iNa_models_ode import OHaraRudy_INa, Koval_ina, OHaraRudy_Gratz_INa,OHaraRudy_wMark_INa
+
 import numpy as np
+import inspect
+
 
 
 try: run_fits
@@ -15,6 +18,7 @@ except NameError:
                 'Inactivation': True,
                 'Recovery':     True,
                 'Tau Act':      True,
+                'Late':         True,
                 }
 #model_name = "OHaraGratz"
 #model_name = "OHaraRudy_wMark_INa"
@@ -118,20 +122,13 @@ elif model_name == "OHaraRudy_wMark_INa":
     
     model_params_initial = np.zeros(model.num_params)
 
-    if run_fits['Recovery']:
-        mp_locs += [7] + list(range(13,16)) + [25,26] # [7]
-        
-    if run_fits['Inactivation']:
-        mp_locs += list(range(7,13)) + [24,27] #7,17
-        
-    if run_fits['Activation']:
-        mp_locs += list(range(2,7)) + [23]#list(range(2,5))
+    mp_locs = np.arange(model.num_params)
 
 
 mp_locs = np.array(list(set(mp_locs)))
 sub_mps = model_params_initial[mp_locs]
 sub_mp_bounds = np.array(model.param_bounds)[mp_locs]
 
-import inspect
-print(np.array(inspect.getfullargspec(model.__init__).args)[1:][mp_locs])
+model_param_names = np.array(inspect.getfullargspec(model.__init__).args)[1:][mp_locs]
+print(model_param_names)
 

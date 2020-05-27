@@ -35,19 +35,19 @@ def setupSimExp(sim_fs, datas, data, exp_parameters, keys_iin, model, process,\
         datas[key] = key_data
 
 
-def normalizeToBaseline(model_params, sim_f, **kwargs):
+def normalizeToBaseline(model_params, sim_f, baseline_locs=[0,3], **kwargs):
     sim_f_baseline = copy.deepcopy(sim_f)
-    sim_f_baseline.keywords['durs'] = [1,10]
-    sim_f_baseline.keywords['voltages'] = [\
-                           sim_f_baseline.keywords['voltages'][0], \
-                           sim_f_baseline.keywords['voltages'][3]]
+    durs = sim_f_baseline.keywords['durs'][np.newaxis, 0, baseline_locs]
+    voltages = sim_f_baseline.keywords['voltages'][np.newaxis, 0, baseline_locs]
+    sim_f_baseline.keywords['durs'] = durs
+    sim_f_baseline.keywords['voltages'] = voltages
     sim_f_baseline.keywords['process'] = peakCurr
 
     try:
         sim_f_iter = sim_f_baseline(model_params)
         next(sim_f_iter)
         baseline = next(sim_f_iter)
-        process = partial(normalized2val, durn=3, val=baseline[0])
+        process = partial(normalized2val, durn=3, val=baseline)
         
         sim_f_iter = sim_f(model_params, process=process, **kwargs)
         for res in sim_f_iter:
