@@ -8,7 +8,7 @@ Created on Mon Apr 13 09:09:01 2020
 
 #from iNa_models import Koval_ina, OHaraRudy_INa
 from iNa_models_ode import OHaraRudy_INa, Koval_ina
-from scripts import load_data_parameters, all_data
+from data_loader import load_data_parameters, all_data
 from iNa_fit_functions import normalize2prepulse, setup_sim, \
 calc_diff, peakCurr, normalized2val, calcExpTauInact, monoExp, biExp,\
 calcExpTauAct, biExp_params, monoExp_params

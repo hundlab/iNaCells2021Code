@@ -5,11 +5,11 @@ Created on Thu Apr 16 16:13:10 2020
 
 @author: grat05
 """
-from iNa_models_ode import OHaraRudy_INa, Koval_ina, OHaraRudy_Gratz_INa,OHaraRudy_wMark_INa
+from iNa_models_ode import OHaraRudy_INa, Koval_ina, OHaraRudy_Gratz_INa, OHaraRudy_wMark_INa
+from parse_cmd_args import args
 
 import numpy as np
 import inspect
-
 
 
 try: run_fits
@@ -20,14 +20,15 @@ except NameError:
                 'Tau Act':      True,
                 'Late':         True,
                 }
+
 #model_name = "OHaraGratz"
 #model_name = "OHaraRudy_wMark_INa"
 #model_name = "OHara"
-model_name = "Koval"
+#model_name = "Koval"
 
 mp_locs = []
 
-if model_name == "OHara":
+if args.model_name == "OHara":
     model = OHaraRudy_INa#models.iNa.OharaRudy_INa#OHaraRudy_INa
     retOptions  = model().retOptions
     dt = 0.05
@@ -91,7 +92,7 @@ if model_name == "OHara":
     if run_fits['Activation']:
         mp_locs += list(range(2,7)) + [29]#list(range(2,5))
 
-elif model_name == "Koval":
+elif args.model_name == "Koval":
     model = Koval_ina
     retOptions  = model().retOptions
     dt = 0.05
@@ -99,7 +100,7 @@ elif model_name == "Koval":
     model_params_initial = np.zeros(model.num_params)
     mp_locs = np.arange(1,20)
     
-elif model_name == "OHaraGratz":
+elif args.model_name == "OHaraGratz":
     model = OHaraRudy_Gratz_INa#models.iNa.OharaRudy_INa#OHaraRudy_INa
     retOptions  = model().retOptions
     dt = 0.05
@@ -115,7 +116,7 @@ elif model_name == "OHaraGratz":
     if run_fits['Activation']:
         mp_locs += list(range(2,7)) + [23]#list(range(2,5))
         
-elif model_name == "OHaraRudy_wMark_INa":
+elif args.model_name == "OHaraRudy_wMark_INa":
     model = OHaraRudy_wMark_INa#models.iNa.OharaRudy_INa#OHaraRudy_INa
     retOptions  = model().retOptions
     dt = 0.05

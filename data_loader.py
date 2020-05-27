@@ -10,19 +10,9 @@ import json
 from glob import iglob
 import pandas as pd
 import numpy as np
-import sys
+from parse_cmd_args import args
 
-if len(sys.argv) > 1:
-    data_root = sys.argv[1]
-else:
-    data_root = 'C:/Users/grat05/OneDrive for Business/Data'#'./Data'#
-if len(sys.argv) > 2:
-    out_dir = sys.argv[2]
-else:
-    out_dir = './'
-
-
-def load_all_data(data_root = data_root):
+def load_all_data(data_root = args.data_root):
     files = [glb.replace('\\','/') for glb in iglob(data_root+'/data/*/*')]
     data = {}
     for file in files:
@@ -44,7 +34,7 @@ def load_all_data(data_root = data_root):
 try: all_data
 except NameError: all_data = load_all_data()
 
-def converter(data_root = data_root):
+def converter(data_root = args.data_root):
     folder2pmid = {}
     for folder in (glb.replace('\\','/') for glb in iglob(data_root+'/data/*')):
         files = [glb.replace('\\','/') for glb in iglob(folder+'/*')]
@@ -59,7 +49,7 @@ def converter(data_root = data_root):
     pmid2folder = sorted(pmid2folder)
     return folder2pmid, pmid2folder
 
-def load_data_parameters(filename, sheet_name, data_root = data_root, data = all_data, default_duration=100):
+def load_data_parameters(filename, sheet_name, data_root = args.data_root, data = all_data, default_duration=100):
     data_parameters = pd.read_excel(data_root+'/'+filename,sheet_name=sheet_name,index_col=[0,1])
     #convert to kelvin
     data_parameters['temp ( C )'] += 273.15

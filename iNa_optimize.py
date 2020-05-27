@@ -9,7 +9,8 @@ Created on Mon Apr 13 09:55:44 2020
 
 #from iNa_models import Koval_ina, OHaraRudy_INa
 from iNa_models_ode import OHaraRudy_INa
-from scripts import load_data_parameters, load_all_data, all_data, out_dir
+from parse_cmd_args import args
+from data_loader import load_data_parameters, load_all_data, all_data
 import iNa_fit_functions
 from iNa_fit_functions import normalize2prepulse, setup_sim, run_sim, \
 calc_diff, peakCurr, normalized2val, calcExpTauInact, monoExp, biExp,\
@@ -29,7 +30,7 @@ from sklearn.preprocessing import minmax_scale
 from scipy import integrate
 from iNa_sims import sim_fs, datas, keys_all, exp_parameters
 from iNa_model_setup import model, mp_locs, sub_mps, sub_mp_bounds, dt, run_fits,\
-    model_params_initial, run_fits, model_name
+    model_params_initial, run_fits
 
 
 
@@ -76,11 +77,11 @@ if __name__ == '__main__':
         res.min_res = min_res
         res.fits = set(rfs for rfs in run_fits if run_fits[rfs])
         res.mp_locs = mp_locs
-        res.model_name = model_name
+        res.model_name = args.model_name
 
-        filename = 'optimize_'+model_name+'_{cdate.month:02d}{cdate.day:02d}_{cdate.hour:02d}{cdate.minute:02d}.pkl'
+        filename = 'optimize_'+args.model_name+'_{cdate.month:02d}{cdate.day:02d}_{cdate.hour:02d}{cdate.minute:02d}.pkl'
         filename = filename.format(cdate=datetime.datetime.now())
-        filepath = out_dir+'/'+filename
+        filepath = args.out_dir+'/'+filename
         with open(filepath, 'wb') as file:
             pickle.dump(res, file)
         print("Pickle File Written to:")

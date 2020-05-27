@@ -10,8 +10,9 @@ import pymc
 import datetime
 import numpy as np
 import pickle
+from threading import Timer
 
-from scripts import out_dir
+from parse_cmd_args import args
 import iNa_fit_functions
 from iNa_fit_functions import calc_results, SimResults
 from multiprocessing import Pool
@@ -20,7 +21,6 @@ import os
 
 from iNa_sims import sim_fs, datas, keys_all, exp_parameters
 from stat_model import make_model
-from iNa_model_setup import model_name as biophys_model_name
 from iNa_model_setup import model_params_initial, mp_locs, sub_mps, model
 
 #from './optimize_Koval_0423_0326.pkl'
@@ -30,12 +30,18 @@ model_params_initial[mp_locs] = np.array(
         5.87859494, -1.00653083, -1.67532066,  0.84144004,  0.88200433,
        -2.70056045, -2.26745786,  2.2395883 , -0.48703343])
 
-previous_run = None
 #previous_run = './mcmc_Koval_0511_1609_2.pickle'
 
 class ObjContainer():
     pass
 
+def stop_sim(pymc_model):
+    pymc_model.pause()
+    pymc_model.save_state()
+    pymc_model.tally()
+    pymc_model.halt()
+    print("Sampling Canceled")
+    
 if __name__ == '__main__':
     
     iNa_fit_functions.plot1 = False #sim
@@ -43,22 +49,22 @@ if __name__ == '__main__':
     iNa_fit_functions.plot3 = False #tau
 
     model_name = './mcmc_'
-    model_name +=  biophys_model_name
+    model_name +=  args.model_name
     model_name += '_{cdate.month:02d}{cdate.day:02d}_{cdate.hour:02d}{cdate.minute:02d}'
     model_name = model_name.format(cdate=datetime.datetime.now())
     meta_data_name = model_name
     model_name += '.pickle'
-    db_path = out_dir+'/'+model_name
+    db_path = args.out_dir+'/'+model_name
     
     meta_data_name += '_metadata.pickle'
-    meta_data_path = out_dir+'/'+meta_data_name
+    meta_data_path = args.out_dir+'/'+meta_data_name
     
     model_metadata = ObjContainer()
     model_metadata.model_params_initial = model_params_initial
     model_metadata.mp_locs = mp_locs
     model_metadata.keys_all = keys_all
     model_metadata.param_bounds = model.param_bounds
-    model_metadata.bio_model_name = biophys_model_name
+    model_metadata.bio_model_name = args.model_name
 
     print("Running Pool with", os.cpu_count(), "processes")
     with Pool() as proc_pool:
@@ -72,13 +78,22 @@ if __name__ == '__main__':
         made_model = make_model(run_biophysical, keys_all, datas, 
                                 model_params_initial, mp_locs, model, 
                                 exp_parameters['temp ( K )'])
-        if previous_run is None:
+        if args.previous_run is None:
             db = 'pickle'
         else:
-            db = pymc.database.pickle.load(previous_run)
-        S = pymc.MCMC(made_model, db=db, dbname=db_path)
-        S.sample(iter=10000, burn=0, thin=1, tune_throughout=True, save_interval=100)#, burn_till_tuned=True)
-        S.db.close()
+            db = pymc.database.pickle.load(args.previous_run)
+        pymc_model = pymc.MCMC(made_model, db=db, dbname=db_path)
+
+        if not args.max_time is None:
+            #max_time is in hours
+            sample_timer = Timer(args.max_time*60*60, stop_sim, args=(pymc_model,))
+            sample_timer.start()
+            
+        pymc_model.sample(iter=10000, burn=0, thin=1, tune_throughout=True, save_interval=100)#, burn_till_tuned=True)
+        pymc_model.db.close()
+        
+        if not args.max_time is None:
+            sample_timer.join()
         
         model_metadata.num_calls = run_biophysical.call_counter
         model_metadata.trace_pickel_file = model_name
