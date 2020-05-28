@@ -126,6 +126,8 @@ class OHaraRudy_INa():
 
     
     def calc_taus_ss(self, vOld):
+        if self.lastVal is not None and np.array_equal(self.lastVal[0], vOld):
+            return self.lastVal[1]
         tau = ObjDict()
         ss = ObjDict()
         
@@ -160,6 +162,8 @@ class OHaraRudy_INa():
         tau.thLp = self.thLp_mult * tau.thL;
 
         tau.__dict__ = {key: min(max(value, 1e-8), 1e20) for key,value in tau.__dict__.items()}
+        
+        self.lastVal = (vOld, (tau, ss))
         return tau, ss
     
     def jac(self, vOld):
