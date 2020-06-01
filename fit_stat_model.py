@@ -89,7 +89,7 @@ if __name__ == '__main__':
             sample_timer = Timer(args.max_time*60*60, stop_sim, args=(pymc_model,))
             sample_timer.start()
             
-        pymc_model.sample(iter=10000, burn=0, thin=1, tune_throughout=True, save_interval=100)#, burn_till_tuned=True)
+        pymc_model.sample(iter=100000, burn=0, thin=1, tune_throughout=True, save_interval=100)#, burn_till_tuned=True)
         pymc_model.db.close()
         
         if not args.max_time is None:

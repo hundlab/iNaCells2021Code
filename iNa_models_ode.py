@@ -20,8 +20,8 @@ class OHaraRudy_INa():
     param_bounds = [(-3,3)]*2 + \
                    [(-0.1,3)] + [(-3,3)] + [(-0.1,3)] +\
                    [(-3,3)] + [(-0.1,3)] +\
-                   [(-1,3), (-3,3), (-1,3)] + \
-                   [(-3,3)] + [(-1,3)] +\
+                   [(-1,3), (-3,3), (-0.1,3)] + \
+                   [(-3,3)] + [(-0.1,3)] +\
                    [(-3,3)] + [(-1,3)] +\
                    [(-3,3)] + [(-1,3)] +\
                    [(-20,20)] + \
@@ -813,8 +813,8 @@ class OHaraRudy_wMark_INa():
         d_vals[7] = b[3]*vals[6]+a[4]*vals[8] - vals[7]*(a[3]+b[4])
         d_vals[8] = b[4]*vals[7] - vals[8]*a[4]        
         
-        if not np.isclose(np.sum(vals[1:]),2):
-            print(np.sum(vals[1:]))
+#        if not np.isclose(np.sum(vals[1:]),2):
+#            print(np.sum(vals[1:]))
 
 #        np.clip(d_vals, a_min=-1e15, a_max=1e15, out=d_vals)
         return d_vals

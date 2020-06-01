@@ -278,9 +278,9 @@ class ModelWrapper():
         return vOld
     def __call__(self, t, vals):
         if self.call_count > 20000 and self.call_count/t > 20:
-            print("Error too many calls", self.call_count)
-            print(t/self.call_count)
-#            raise ValueError
+            print("Error too many calls", self.call_count/t, self.call_count)
+            self.call_count = 1
+            #raise ValueError
         self.call_count += 1
         vOld = self.getvOld(t)
         ddt_vals =  self.run_model.ddtcalc(vals, vOld)
