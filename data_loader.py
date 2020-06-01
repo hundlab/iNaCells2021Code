@@ -12,6 +12,7 @@ import pandas as pd
 import numpy as np
 from parse_cmd_args import args
 
+
 def load_all_data(data_root = args.data_root):
     files = [glb.replace('\\','/') for glb in iglob(data_root+'/data/*/*')]
     data = {}

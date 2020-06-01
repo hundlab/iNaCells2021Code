@@ -20,11 +20,10 @@ from functools import partial
 import os
 
 from iNa_sims import sim_fs, datas, keys_all
-from iNa_model_setup import model_name as biophys_model_name
 from iNa_model_setup import model_params_initial, mp_locs, sub_mps, model
 
-plot_trace = True
-plot_sim = False
+plot_trace = False
+plot_sim = True
 plot_pymc_diag = False
 
 iNa_fit_functions.plot1 = False #sim
@@ -35,9 +34,11 @@ if __name__ == '__main__':
     class ObjContainer():
         pass
     
-    trace_file = 'mcmc_Koval_0519_1830.pickle'
+#    trace_file = 'mcmc_Koval_0519_1830.pickle'
+#    trace_metadata_file = './mcmc_Koval_0511_1609_metadata.pickle'
+    trace_file = 'mcmc_Koval_0526_1728.pickle'
+    trace_metadata_file = 'mcmc_Koval_0526_1728_metadata.pickle'
     #trace_file = './mcmc_Koval_0511_1609.pickle'
-    trace_metadata_file = './mcmc_Koval_0511_1609_metadata.pickle'
     with open(trace_file,'rb') as file:
         db = pickle.load(file)
     with open(trace_metadata_file,'rb') as file:
@@ -45,6 +46,7 @@ if __name__ == '__main__':
     group_names = []
     for key_group in model_metadata.keys_all:
         group_names.append(exp_parameters.loc[key_group[0], 'Sim Group'])
+    bounds = np.array(model_metadata.param_bounds)[model_metadata.mp_locs, :]
         
     if plot_trace:
         
@@ -63,7 +65,10 @@ if __name__ == '__main__':
         ax.append(fig.add_subplot(1,2,2, sharey=ax[0]))
         for i in range(trace_data.shape[1]):
             ax[0].plot(trace_data[:,i], label=model_param_names[i])
-            ax[1].hist(trace_data[:,i], orientation='horizontal', label=model_param_names[i])
+            _,_,hist = ax[1].hist(trace_data[:,i], orientation='horizontal', label=model_param_names[i])
+            color = hist[0].get_facecolor()
+            ax[0].axhline(bounds[i, 0]+i/100, c=color, label=model_param_names[i]+'_lower')
+            ax[0].axhline(bounds[i, 1]+i/100, c=color, label=model_param_names[i]+'_upper')
         ax[1].legend(frameon=False)
         
             
@@ -78,6 +83,16 @@ if __name__ == '__main__':
         ax[1].legend(frameon=False)
         
             
+        trace = 'b_temp'
+        trace_data = db[trace][0]
+        fig = plt.figure(trace)
+        ax = [fig.add_subplot(1,2,1)]
+        ax.append(fig.add_subplot(1,2,2, sharey=ax[0]))
+        for i in range(trace_data.shape[1]):
+            ax[0].plot(trace_data[:,i], label=model_param_names[i])
+            ax[1].hist(trace_data[:,i], orientation='horizontal', label=model_param_names[i])
+        ax[1].legend(frameon=False)
+        
         trace = 'error_tau'
         trace_data = db[trace][0]
         fig = plt.figure(trace)
@@ -87,6 +102,8 @@ if __name__ == '__main__':
             ax[0].plot(1/np.sqrt(trace_data[:,i]), label=group_names[i])
             ax[1].hist(1/np.sqrt(trace_data[:,i]), orientation='horizontal', label=group_names[i])
         ax[1].legend(frameon=False)
+        
+
         
         trace = 'model_param'
         trace_data = db[trace][0]
@@ -112,8 +129,21 @@ if __name__ == '__main__':
     if plot_sim:
         with Pool() as proc_pool:
     #        proc_pool = None
-            model_param_mean = np.mean(db['model_param_mean'][0], axis=0)
-            res_overall = calc_results(model_param_mean, sim_funcs=sim_fs,\
+            b_temp = np.median(db['b_temp'][0][9000:], axis=0)
+            intercept = np.median(db['model_param_mean'][0][9000:], axis=0)
+            num_sims = sum(map(len, model_metadata.keys_all))
+            model_params = {}
+            k = 0
+            for i, keys in enumerate(model_metadata.keys_all):
+                for j, key in enumerate(keys):
+                    #temperature adjusted to minimum in group
+                    temperature = exp_parameters.loc[key, 'temp ( K )'] -290.15
+                    b_temp_eff = b_temp * temperature
+                    sub_mps = intercept + b_temp_eff
+                    model_params[key] = sub_mps
+                    k += 1
+    
+            res_overall = calc_results(model_params, sim_funcs=sim_fs,\
                                       model_parameters_full=model_params_initial,\
                             mp_locs=mp_locs, data=datas,error_fill=0,\
                             pool=proc_pool)

@@ -813,8 +813,8 @@ class OHaraRudy_wMark_INa():
         d_vals[7] = b[3]*vals[6]+a[4]*vals[8] - vals[7]*(a[3]+b[4])
         d_vals[8] = b[4]*vals[7] - vals[8]*a[4]        
         
-        if not np.isclose(np.sum(vals[1:]),2):
-            print(np.sum(vals[1:]))
+#        if not np.isclose(np.sum(vals[1:]),2):
+#            print(np.sum(vals[1:]))
 
 #        np.clip(d_vals, a_min=-1e15, a_max=1e15, out=d_vals)
         return d_vals
@@ -889,12 +889,12 @@ class OHaraRudy_wMark_INa():
 class Koval_ina:
     num_params = 22
     param_bounds = \
-       [(-3,3)] +\
-        [(-3,3)]*3 +\
-        [(-3,3)] + [(-0.2,3)] + [(-3,3)] +\
-        [(-0.2,3),(-3,3)] + [(-10,10)] +\
-        [(-3,3)] + [(-10,10)] + [(-3,3)] +\
-        [(-3,3)]*9
+       [(-3,4)] +\
+        [(-3,4)]*3 +\
+        [(-3,4)] + [(-0.5,4)] + [(-3,4)] +\
+        [(-0.5,4),(-3,4)] + [(-10,10)] +\
+        [(-3,4)] + [(-10,10)] + [(-3,4)] +\
+        [(-3,4)]*9
     
     RGAS = 8314.4
     FDAY = 96485
