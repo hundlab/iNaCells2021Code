@@ -6,42 +6,57 @@ Created on Thu May 21 09:47:10 2020
 @author: grat05
 """
 
+import sys
+sys.path.append('../../../')
+
 import pickle
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-from iNa_sims import exp_parameters
-from iNa_model_setup import model_param_names
-import iNa_fit_functions
-from iNa_fit_functions import calc_results
+import atrial_model
+from atrial_model.iNa.define_sims import exp_parameters
+from atrial_model.iNa.model_setup import model_param_names
+import atrial_model.run_sims_functions
+from atrial_model.run_sims import calc_results
+from atrial_model.iNa.define_sims import sim_fs, datas, keys_all
+from atrial_model.iNa.model_setup import model_params_initial, mp_locs, sub_mps, model
+
+
 from multiprocessing import Pool
 from functools import partial
 import os
 
-from iNa_sims import sim_fs, datas, keys_all
-from iNa_model_setup import model_params_initial, mp_locs, sub_mps, model
 
-plot_trace = False
-plot_sim = True
+plot_trace = True
+plot_sim = False
 plot_pymc_diag = False
 
-iNa_fit_functions.plot1 = False #sim
-iNa_fit_functions.plot2 = False #diff
-iNa_fit_functions.plot3 = False #tau
+atrial_model.run_sims_functions.plot1 = False #sim
+atrial_model.run_sims_functions.plot2 = False #diff
+atrial_model.run_sims_functions.plot3 = False #tau
+
+burn_till = 40000
+#burn_till = 60000
 
 if __name__ == '__main__':
     class ObjContainer():
         pass
-    
-#    trace_file = 'mcmc_Koval_0519_1830.pickle'
-#    trace_metadata_file = './mcmc_Koval_0511_1609_metadata.pickle'
-    trace_file = 'mcmc_Koval_0526_1728.pickle'
-    trace_metadata_file = 'mcmc_Koval_0526_1728_metadata.pickle'
-    #trace_file = './mcmc_Koval_0511_1609.pickle'
-    with open(trace_file,'rb') as file:
+    filename = 'mcmc_OHaraRudy_wMark_INa_0603_1051'
+    #filename = 'mcmc_OHara_0528_1805'
+#    filename = 'mcmc_OHaraRudy_wMark_INa_0528_1833'
+    #filename = 'mcmc_Koval_0526_1728'
+#    filename = 'mcmc_Koval_0519_1830'
+
+    filepath = atrial_model.fit_data_dir+'/'+filename
+    with open(filepath+'.pickle','rb') as file:
         db = pickle.load(file)
-    with open(trace_metadata_file,'rb') as file:
+    if db['_state_']['sampler']['status'] == 'paused':
+        current_iter = db['_state_']['sampler']['_current_iter']
+        for key in db.keys():
+            if key != '_state_':
+                db[key][0] = db[key][0][:current_iter]
+    with open(filepath+'_metadata.pickle','rb') as file:
         model_metadata = pickle.load(file)
     group_names = []
     for key_group in model_metadata.keys_all:
@@ -66,9 +81,9 @@ if __name__ == '__main__':
         for i in range(trace_data.shape[1]):
             ax[0].plot(trace_data[:,i], label=model_param_names[i])
             _,_,hist = ax[1].hist(trace_data[:,i], orientation='horizontal', label=model_param_names[i])
-            color = hist[0].get_facecolor()
-            ax[0].axhline(bounds[i, 0]+i/100, c=color, label=model_param_names[i]+'_lower')
-            ax[0].axhline(bounds[i, 1]+i/100, c=color, label=model_param_names[i]+'_upper')
+#            color = hist[0].get_facecolor()
+#            ax[0].axhline(bounds[i, 0]+i/100, c=color, label=model_param_names[i]+'_lower')
+#            ax[0].axhline(bounds[i, 1]+i/100, c=color, label=model_param_names[i]+'_upper')
         ax[1].legend(frameon=False)
         
             
@@ -129,8 +144,8 @@ if __name__ == '__main__':
     if plot_sim:
         with Pool() as proc_pool:
     #        proc_pool = None
-            b_temp = np.median(db['b_temp'][0][9000:], axis=0)
-            intercept = np.median(db['model_param_mean'][0][9000:], axis=0)
+            b_temp = np.median(db['b_temp'][0][burn_till:], axis=0)
+            intercept = np.median(db['model_param_mean'][0][burn_till:], axis=0)
             num_sims = sum(map(len, model_metadata.keys_all))
             model_params = {}
             k = 0

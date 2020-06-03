@@ -8,6 +8,9 @@ Created on Mon Jun  1 13:45:03 2020
 
 import numpy as np
 import pandas as pd
+from functools import partial
+
+from .run_sims import run_sim
 
 
 def setup_sim_vc(data, exp_parameters, hold_dur, data_len=None):

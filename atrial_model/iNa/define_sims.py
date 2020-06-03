@@ -6,16 +6,17 @@ Created on Mon Apr 13 09:09:01 2020
 @author: dgratz
 """
 
-#from iNa_models import Koval_ina, OHaraRudy_INa
-from iNa_models_ode import OHaraRudy_INa, Koval_ina
-from data_loader import load_data_parameters, all_data
-from iNa_fit_functions import normalize2prepulse, setup_sim, \
-calc_diff, peakCurr, normalized2val, calcExpTauInact, monoExp, biExp,\
+from ..data_loader import load_data_parameters, all_data
+from ..run_sims_functions import normalize2prepulse, \
+peakCurr, normalized2val, calcExpTauInact, monoExp, biExp,\
 calcExpTauAct, biExp_params, monoExp_params
-from setup_sim_functions import setupSimExp, normalizeToBaseline, normalizeToFirst,\
+
+from ..run_sims import calc_diff
+from ..setup_sim import setup_sim
+from ..setup_sim_functions import setupSimExp, normalizeToBaseline, normalizeToFirst,\
     resort, minNorm_data, minNorm, minMaxNorm, func_norm, func_norm_data, minMaxNorm_data,\
     normalizeToFirst_data
-from iNa_model_setup import model, mp_locs, sub_mps, sub_mp_bounds, dt, run_fits
+from .model_setup import model, mp_locs, sub_mps, sub_mp_bounds, dt, run_fits
 
 
 import numpy as np
@@ -44,7 +45,6 @@ datas = {}
 keys_all = []
 
 solver = partial(integrate.solve_ivp, method='BDF')
-
 
 if run_fits['Recovery']:
 
@@ -173,29 +173,29 @@ if run_fits['Inactivation']:
 
 
 
-    # #tau inactivation fast & slow
-    # keysf_iin = [('21647304_2', 'Dataset C Adults'), ('21647304_2', 'Dataset C Pediactric')]
-    # keyss_iin = [('21647304_2',	'Dataset D Adults'), ('21647304_2',	'Dataset D Pediactric')]
-    # #('1323431_5',	'Dataset B fast'),('1323431_5',	'Dataset B slow'),\
-    # keys_all.append(keysf_iin)
-    # process = partial(calcExpTauInact,func=biExp,x0=biExp_params,\
-    #                   keep=[0,1],calc_dur=1)
-    # setup_sim_args = {'sim_args':{'solver': solver,
-    #                               'retOptions': \
-    #                                       {'G': True, 'INa': True, 'INaL': True,\
-    #                                         'Open': True, 'RevPot': True},
-    #                               'dt' : dt,
-    #                               'process' : process,
-    #                               'post_process' : partial(func_norm, 
-    #                                                         func=lambda vals: np.log(resort(vals)))}} 
-    # for keyf, keys in zip(keysf_iin, keyss_iin):
-    #     key_dataf = func_norm_data(data[keyf], np.log)
-    #     key_datas = func_norm_data(data[keys], np.log)
-    #     key_exp_p = exp_parameters.loc[keyf]
-    #     voltages, durs, sim_f = setup_sim(model, key_dataf, key_exp_p, **setup_sim_args)
+    #tau inactivation fast & slow
+    keysf_iin = [('21647304_2', 'Dataset C Adults'), ('21647304_2', 'Dataset C Pediactric')]
+    keyss_iin = [('21647304_2',	'Dataset D Adults'), ('21647304_2',	'Dataset D Pediactric')]
+    #('1323431_5',	'Dataset B fast'),('1323431_5',	'Dataset B slow'),\
+    keys_all.append(keysf_iin)
+    process = partial(calcExpTauInact,func=biExp,x0=biExp_params,\
+                      keep=[0,1],calc_dur=1)
+    setup_sim_args = {'sim_args':{'solver': solver,
+                                  'retOptions': \
+                                          {'G': True, 'INa': True, 'INaL': True,\
+                                            'Open': True, 'RevPot': True},
+                                  'dt' : dt,
+                                  'process' : process,
+                                  'post_process' : partial(func_norm, 
+                                                            func=lambda vals: np.log(resort(vals)))}} 
+    for keyf, keys in zip(keysf_iin, keyss_iin):
+        key_dataf = func_norm_data(data[keyf], np.log)
+        key_datas = func_norm_data(data[keys], np.log)
+        key_exp_p = exp_parameters.loc[keyf]
+        voltages, durs, sim_f = setup_sim(model, key_dataf, key_exp_p, **setup_sim_args)
     
-    #     sim_fs[keyf] = sim_f
-    #     datas[keyf] = np.concatenate((key_dataf, key_datas))
+        sim_fs[keyf] = sim_f
+        datas[keyf] = np.concatenate((key_dataf, key_datas))
 
 if run_fits['Activation']:
 
@@ -221,16 +221,32 @@ if run_fits['Activation']:
                                  'Open': True, 'RevPot': False},
                                 'solver': solver}})#'ret': [False,True,False]
 
-   ## iv curve
+    ## iv curve
     keys_iin = [
     ('8928874_7',	'Dataset C day 1'), ('8928874_7',	'Dataset C day 3'),
     ('8928874_7',	'Dataset C day 5'), ('8928874_7',	'Dataset C fresh'),
-#    ('12890054_3',	'Dataset C Control'), ('12890054_3',	'Dataset D Control'),
-#    ('12890054_5',	'Dataset C Control'), ('12890054_5',	'Dataset D Control'),
+    ('21647304_1',	'Dataset B Adults'), ('21647304_1', 'Dataset B Pediatrics')
+    ]
+    keys_all.append(keys_iin)
+    
+    setupSimExp(sim_fs=sim_fs,\
+                datas=datas,\
+                data=data,\
+                exp_parameters=exp_parameters,\
+                keys_iin=keys_iin,\
+                model=model,\
+                process=peakCurr,\
+                dt=dt,\
+                process_data=None,
+                post_process=None,
+                setup_sim_args={'sim_args':{'solver': solver}})
+
+
+    ## normalized iv curve
+    keys_iin = [
     ('1323431_1',	'Dataset B'), ('1323431_3',	'Dataset A 2'),
     ('1323431_3',	'Dataset A 20'), ('1323431_3',	'Dataset A 5'),
-    ('1323431_4',	'Dataset B Control'),
-    ('21647304_1',	'Dataset B Adults'), ('21647304_1', 'Dataset B Pediatrics')
+    ('1323431_4',	'Dataset B Control')
     ]
     keys_all.append(keys_iin)
     

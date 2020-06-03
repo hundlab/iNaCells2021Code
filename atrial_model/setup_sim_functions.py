@@ -6,7 +6,8 @@ Created on Mon Apr 13 09:12:23 2020
 @author: dgratz
 """
 
-from iNa_fit_functions import setup_sim, peakCurr, normalized2val
+from .setup_sim import setup_sim
+from .run_sims_functions import peakCurr, normalized2val
 
 import numpy as np
 from functools import partial

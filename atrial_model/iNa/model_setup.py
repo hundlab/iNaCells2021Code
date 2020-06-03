@@ -5,8 +5,8 @@ Created on Thu Apr 16 16:13:10 2020
 
 @author: grat05
 """
-from iNa_models_ode import OHaraRudy_INa, Koval_ina, OHaraRudy_Gratz_INa, OHaraRudy_wMark_INa
-from parse_cmd_args import args
+from .models import OHaraRudy_INa, Koval_ina, OHaraRudy_Gratz_INa, OHaraRudy_wMark_INa
+from ..parse_cmd_args import args
 
 import numpy as np
 import inspect

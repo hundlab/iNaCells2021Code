@@ -585,8 +585,8 @@ class OHaraRudy_wMark_INa():
                    (-3,3),
 
                    (-1,3), (-15,15),
-                   (-3,3), (-0.1,3),
-                   (-3,3), (-0.1,3),
+                   (-3,3), (-1,3),
+                   (-15,15), (-1,3),
                    
                    (-1,3), (-15,15), (-15,15),
                    (-3,3), (-15,15), (-1,3),
@@ -609,8 +609,8 @@ class OHaraRudy_wMark_INa():
                  baselineFactor=0,
 
                  mss_tauFactor=0, mss_shiftFactor=0,
-                 tm_mult1Factor=0, tm_tau1Factor=0,
-                 tm_mult2Factor=0, tm_tau2Factor=0,
+                 tm_maxFactor=0, tm_tau1Factor=0,
+                 tm_shiftFactor=0, tm_tau2Factor=0,
                  
                  hss_tauFactor=0, hss_shiftFactor=0, hsss_shiftFactor=0,
                  thf_maxFactor=0, thf_shiftFactor=0, thf_tauFactor=0,
@@ -624,7 +624,7 @@ class OHaraRudy_wMark_INa():
                  TEMP = 310.0, naO = 140.0, naI = 7):
 
         # scaling currents 0 
-        self.GNa = 75*np.exp(GNaFactor);
+        self.GNa = np.exp(GNaFactor);
 
         #fastest tau 2
         self.baseline = 2.038*np.exp(baselineFactor)
@@ -633,10 +633,14 @@ class OHaraRudy_wMark_INa():
         self.mss_tau = 9.871*np.exp(mss_tauFactor)
         self.mss_shift = 51.57+mss_shiftFactor
 
-        self.tm_mult1 = 6.765*np.exp(tm_mult1Factor)
+        self.tm_max = 0.474*np.exp(tm_maxFactor)
         self.tm_tau1 = 34.77*np.exp(tm_tau1Factor)
-        self.tm_mult2 = 8.552*np.exp(tm_mult2Factor)
+        self.tm_shift = -57.6+tm_shiftFactor
         self.tm_tau2 = 5.955*np.exp(tm_tau2Factor)
+        tm_cshift = np.log(self.tm_tau1/self.tm_tau2)/(1/self.tm_tau1+1/self.tm_tau2)
+        tm_cmax = np.exp(tm_cshift/self.tm_tau1) + np.exp(-tm_cshift/self.tm_tau2)
+        self.tm_shift -= tm_cshift #shift correction
+        self.tm_max *= tm_cmax #height correction
 
         #h gate 9
         self.hss_tau = 14.086*np.exp(hss_tauFactor)
@@ -684,6 +688,7 @@ class OHaraRudy_wMark_INa():
         self.retOptions = {'G': True, 'INa': True, 'INaL': True,\
                                  'Open': True, 'RevPot': True}
         self.lastVal = None
+        self.lastddt = None
             
 
     
@@ -701,8 +706,10 @@ class OHaraRudy_wMark_INa():
         
         
         ss.mss = 1.0 / (1.0 + np.exp((-(vOld + self.mss_shift)) / self.mss_tau));
-        tau.tm = self.baseline/15+ 1.0 / (self.tm_mult1 * np.exp((vOld + 11.64) / self.tm_tau1) +
-                           self.tm_mult2 * np.exp(-(vOld + 77.42) / self.tm_tau2));
+        tau.tm = self.baseline/30+ self.tm_max/(np.exp((vOld-self.tm_shift)/self.tm_tau1) 
+                                                + np.exp(-(vOld-self.tm_shift)/self.tm_tau2))
+        #1.0 / (self.tm_mult1 * np.exp((vOld + 11.64) / self.tm_tau1) +
+        #                   self.tm_mult2 * np.exp(-(vOld + 77.42) / self.tm_tau2));
         
         a[0] = ss.mss/tau.tm
         b[0] = (1-ss.mss)/tau.tm
@@ -796,6 +803,13 @@ class OHaraRudy_wMark_INa():
 
     def ddtcalc(self, vals, vOld):
         d_vals = np.zeros_like(vals)
+        vals = np.clip(vals, a_min=0, a_max=1)
+        
+        if self.lastddt is not None and\
+            np.array_equal(self.lastddt[0], vOld) and\
+            np.array_equal(self.lastddt[1], vals):
+#            print(np.sum(np.abs(self.lastddt[1]- vals)))
+            return self.lastddt[2]
         
         tau, ss, a, b = self.calc_taus_ss(vOld)
         #m
@@ -813,10 +827,12 @@ class OHaraRudy_wMark_INa():
         d_vals[7] = b[3]*vals[6]+a[4]*vals[8] - vals[7]*(a[3]+b[4])
         d_vals[8] = b[4]*vals[7] - vals[8]*a[4]        
         
+        
 #        if not np.isclose(np.sum(vals[1:]),2):
 #            print(np.sum(vals[1:]))
 
 #        np.clip(d_vals, a_min=-1e15, a_max=1e15, out=d_vals)
+        self.lastddt = (vOld, vals, d_vals)
         return d_vals
     
     def getRevPot(self):

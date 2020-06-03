@@ -60,20 +60,22 @@ def make_model(run_biophysical, key_groups, datas, model_params_initial, mp_locs
         mu = model_param_mean[model_param_index] + b_temp[model_param_index]*temperature_arr[...,None]
 
         # model parameter  ~ N
-        model_param_sim =  pymc.TruncatedNormal("model_param",
+        model_param_sim =  pymc.Normal("model_param",
                                          mu = mu,
-                                         tau = model_param_tau[model_param_index],
-                                         a = model_bounds[mp_locs,0][model_param_index],
-                                         b = model_bounds[mp_locs,1][model_param_index])
+                                         tau = model_param_tau[model_param_index]
+#                                         a = model_bounds[mp_locs,0][model_param_index],
+#                                         b = model_bounds[mp_locs,1][model_param_index]
+                                         )
     else:
         # model parameter  ~ N
         model_param_index = np.arange(start=0,stop=len(mp_locs),step=1,dtype=int)
         model_param_index = np.tile(model_param_index, (num_sims,1))
-        model_param_sim =  pymc.TruncatedNormal("model_param",
+        model_param_sim =  pymc.Normal("model_param",
                                          mu = model_param_mean[model_param_index],
-                                         tau = model_param_tau[model_param_index],
-                                         a = model_bounds[mp_locs,0][model_param_index],
-                                         b = model_bounds[mp_locs,1][model_param_index])        
+                                         tau = model_param_tau[model_param_index]
+#                                         a = model_bounds[mp_locs,0][model_param_index],
+#                                         b = model_bounds[mp_locs,1][model_param_index]
+                                         )        
 
 
     # precision for each protocol ~ Gamma
@@ -125,14 +127,5 @@ def make_model(run_biophysical, key_groups, datas, model_params_initial, mp_locs
                   biophys_lik, biophys_result, error_tau]
     if not temperatures is None:
         stat_model.append(b_temp)
-        
-    # import pickle
-    # trace_file = './mcmc_Koval_0511_1609_2.pickle'
-    # with open(trace_file,'rb') as file:
-    #     db = pickle.load(file)
-    # prev_state = db['_state_']['stochastics']
-    # for var in stat_model:
-    #     if var.__name__ in prev_state:
-    #         var.value = prev_state[var.__name__]
-    
+
     return stat_model

@@ -10,6 +10,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 
+from . import run_sims_functions
+from .run_sims_functions import isList
+
 def standardSolver(flat_durs, flat_voltages, run_model, dt):
     run = True
     t = 0
@@ -82,7 +85,7 @@ def scipySolver(flat_durs, flat_voltages, run_model, solver, dt=None):
         message += str(wrap_run_model.run_model.lastVal)
         raise ValueError(message)
 
-#    print(res)
+#    print(len(res.t)/res.t[-1])
     times = res.t
     vMs = wrap_run_model.getvOld(times)
     iNa = run_model.calcCurrent(res.y, vMs)
@@ -101,7 +104,7 @@ def solveAndProcesses(durs, voltages, run_model, solver, dt, process, sub_sim_po
     iNa = np.array(iNa)
     vMs = np.array(vMs)
     
-    if plot1:
+    if run_sims_functions.plot1:
         plt.figure()
         plt.subplot(311)
         plt.plot(times, iNa)
@@ -246,7 +249,7 @@ def calc_diff_single(model_parameters_part, model_parameters_full, sim_func,\
     model_parameters_full[mp_locs] = model_parameters_part
     sims_iter = sim_func(model_parameters_full)
     vals_sim = next(next(sims_iter))
-    if plot2:
+    if run_sims_functions.plot2:
         plt.figure("Overall")
         plt.plot(data[:,0], vals_sim)
         plt.scatter(data[:,0], data[:,1])
@@ -282,7 +285,7 @@ def calc_diff_multiple(model_parameters_part, model_parameters_full, sim_func,\
         try:
             vals_sim = next(sims_iter)
             error += list((sub_dat[:,1] - vals_sim))
-            if plot2:
+            if run_sims_functions.plot2:
                 if exp_params is None:
                     plt.figure("Overall")
                 else:
@@ -314,7 +317,7 @@ def calc_diff_multiple(model_parameters_part, model_parameters_full, sim_func,\
     #         sim_f_sing = sim_func[i]
     #         vals_sim = sim_f_sing(model_parameters_full)
     #     error += list((sub_dat[:,1] - vals_sim))
-    #     if plot2:
+    #     if run_sims_functions.plot2:
     #         if exp_params is None or keys is None:
     #             plt.figure("Overall")
     #         else:
@@ -322,11 +325,11 @@ def calc_diff_multiple(model_parameters_part, model_parameters_full, sim_func,\
     #         plt.plot(sub_dat[:,0], vals_sim)
     #         plt.scatter(sub_dat[:,0], sub_dat[:,1])
     error = np.array(error)
-    p_loss = 1/(model_parameters_full+1)-0.5
-    error = np.concatenate((error, l*p_loss))
+#    p_loss = 1/(model_parameters_full+1)-0.5
+#    error = np.concatenate((error, l*p_loss))
     with np.printoptions(precision=3):
 #        print(model_parameters_part)
-        print(0.5*np.sum(error**2),np.sum((l*p_loss)**2))
+        print(0.5*np.sum(error**2))
     if not results is None:
         results.append((error,model_parameters_part))
     if ssq:

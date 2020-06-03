@@ -6,16 +6,16 @@ Created on Mon Apr 13 09:55:44 2020
 @author: dgratz
 """
 
+import sys
+sys.path.append('../../../')
 
-#from iNa_models import Koval_ina, OHaraRudy_INa
-from iNa_models_ode import OHaraRudy_INa
-from parse_cmd_args import args
-from data_loader import load_data_parameters, load_all_data, all_data
-import iNa_fit_functions
-from iNa_fit_functions import normalize2prepulse, setup_sim, run_sim, \
-calc_diff, peakCurr, normalized2val, calcExpTauInact, monoExp, biExp,\
-calcExpTauAct
-from optimization_functions import lstsq_wrap, save_results
+from atrial_model.parse_cmd_args import args
+import atrial_model.run_sims_functions
+from atrial_model.run_sims import calc_diff
+from atrial_model.optimization_functions import lstsq_wrap, save_results
+from atrial_model.iNa.define_sims import sim_fs, datas, keys_all, exp_parameters
+from atrial_model.iNa.model_setup import model, mp_locs, sub_mps, sub_mp_bounds, dt, run_fits,\
+    model_params_initial, run_fits
 
 
 import numpy as np
@@ -28,9 +28,6 @@ import pickle
 import datetime
 from sklearn.preprocessing import minmax_scale
 from scipy import integrate
-from iNa_sims import sim_fs, datas, keys_all, exp_parameters
-from iNa_model_setup import model, mp_locs, sub_mps, sub_mp_bounds, dt, run_fits,\
-    model_params_initial, run_fits
 
 
 
@@ -40,9 +37,9 @@ from iNa_model_setup import model, mp_locs, sub_mps, sub_mp_bounds, dt, run_fits
 
 np.seterr(all='ignore')
 
-iNa_fit_functions.plot1 = False #sim
-iNa_fit_functions.plot2 = False #diff
-iNa_fit_functions.plot3 = False #tau
+atrial_model.run_sims_functions.plot1 = False #sim
+atrial_model.run_sims_functions.plot2 = False #diff
+atrial_model.run_sims_functions.plot3 = False #tau
 
 
 
@@ -88,9 +85,9 @@ if __name__ == '__main__':
         print(filepath)
 
         # #plot!
-        # iNa_fit_functions.plot1 = False #sim
-        # iNa_fit_functions.plot2 = True #diff
-        # iNa_fit_functions.plot3 = False #tau
+        # atrial_model.run_sims_functions.plot1 = False #sim
+        # atrial_model.run_sims_functions.plot2 = True #diff
+        # atrial_model.run_sims_functions.plot3 = False #tau
 
         # error = diff_fn(res.x, exp_params=exp_parameters, 
         #                 keys=[key for key in key_group for key_group in keys_all])

@@ -11,17 +11,22 @@ import datetime
 import numpy as np
 import pickle
 from threading import Timer
-
-from parse_cmd_args import args
-import iNa_fit_functions
-from iNa_fit_functions import calc_results, SimResults
 from multiprocessing import Pool
 from functools import partial
 import os
 
-from iNa_sims import sim_fs, datas, keys_all, exp_parameters
-from stat_model import make_model
-from iNa_model_setup import model_params_initial, mp_locs, sub_mps, model
+import sys
+import os
+sys.path.append(os.path.abspath(
+    os.path.join(os.path.dirname(__file__), 
+                 os.pardir, os.pardir, os.pardir)))
+
+from atrial_model.parse_cmd_args import args
+import atrial_model.run_sims_functions
+from atrial_model.run_sims import calc_results, SimResults
+from atrial_model.iNa.define_sims import sim_fs, datas, keys_all, exp_parameters
+from atrial_model.iNa.stat_model import make_model
+from atrial_model.iNa.model_setup import model_params_initial, mp_locs, sub_mps, model
 
 #from './optimize_Koval_0423_0326.pkl'
 # model_params_initial[mp_locs] = np.array(
@@ -44,9 +49,9 @@ def stop_sim(pymc_model):
     
 if __name__ == '__main__':
     
-    iNa_fit_functions.plot1 = False #sim
-    iNa_fit_functions.plot2 = False #diff
-    iNa_fit_functions.plot3 = False #tau
+    atrial_model.run_sims_functions.plot1 = False #sim
+    atrial_model.run_sims_functions.plot2 = False #diff
+    atrial_model.run_sims_functions.plot3 = False #tau
 
     model_name = './mcmc_'
     model_name +=  args.model_name
@@ -78,10 +83,19 @@ if __name__ == '__main__':
         made_model = make_model(run_biophysical, keys_all, datas, 
                                 model_params_initial, mp_locs, model, 
                                 exp_parameters['temp ( K )'])
-        if args.previous_run is None:
-            db = 'pickle'
-        else:
+        db = 'pickle'
+        if not args.previous_run is None and not args.previous_run_manual:
             db = pymc.database.pickle.load(args.previous_run)
+        else:
+                with open(args.previous_run,'rb') as file:
+                    old_db = pickle.load(file)
+                prev_state = old_db['_state_']['stochastics']
+                for var in made_model:
+                    if var.__name__ == 'model_param':
+                        var.value = prev_state[var.__name__]
+                    # if var.__name__ in prev_state:
+                    #     var.value = prev_state[var.__name__]
+                del old_db
         pymc_model = pymc.MCMC(made_model, db=db, dbname=db_path)
 
         if not args.max_time is None:

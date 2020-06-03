@@ -10,7 +10,7 @@ import json
 from glob import iglob
 import pandas as pd
 import numpy as np
-from parse_cmd_args import args
+from .parse_cmd_args import args
 
 
 def load_all_data(data_root = args.data_root):
