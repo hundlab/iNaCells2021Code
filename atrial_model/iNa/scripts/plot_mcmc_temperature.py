@@ -6,21 +6,25 @@ Created on Fri May 29 08:48:07 2020
 @author: grat05
 """
 
+import sys
+import os
+sys.path.append(os.path.abspath(
+    os.path.join(os.path.dirname(__file__), 
+                 os.pardir, os.pardir, os.pardir)))
 
-#from iNa_models import Koval_ina, OHaraRudy_INa
-from iNa_models_ode import OHaraRudy_INa, Koval_ina
-import iNa_fit_functions
-from iNa_fit_functions import calc_diff, peakCurr, normalized2val, calcExpTauInact, monoExp,\
-calcExpTauAct, triExp, biExp
+import atrial_model
+import atrial_model.run_sims_functions
+from atrial_model.run_sims import calc_diff
+from atrial_model.iNa.model_setup import model, mp_locs, sub_mps, sub_mp_bounds, model_params_initial
+from atrial_model.iNa.define_sims import sim_fs, datas,\
+    keys_all, exp_parameters
+
 from sklearn.preprocessing import minmax_scale
 from multiprocessing import Pool
-
 import numpy as np
+import pickle
 import matplotlib.pyplot as plt
 from functools import partial
-from iNa_sims import sim_fs, datas,\
-    keys_all, exp_parameters
-from iNa_model_setup import model, mp_locs, sub_mps, sub_mp_bounds, model_params_initial
 
 
 class ObjContainer():
@@ -142,41 +146,51 @@ keys_keep = set(keys_keep)
 sim_fs = {key: sim_f for key, sim_f in sim_fs.items() if key in keys_keep}
 datas = {key: data for key, data in datas.items() if key in keys_keep}
 
-import pickle
-res = pickle.load(open('./optimize_Koval_0423_0326.pkl','rb'))
-#mp_locs = res.mp_locs
+# 
+# res = pickle.load(open('./optimize_Koval_0423_0326.pkl','rb'))
+# #mp_locs = res.mp_locs
 #sub_mps = res.x
 
 #------------------------------------------------------------------------------
 #------------------------------------------------------------------------------
-iNa_fit_functions.plot1 = False#True#True #sim
-iNa_fit_functions.plot2 = True #diff
-iNa_fit_functions.plot3 = False #tau
+atrial_model.run_sims_functions.plot1 = False#True#True #sim
+atrial_model.run_sims_functions.plot2 = True #diff
+atrial_model.run_sims_functions.plot3 = False #tau
 
 if __name__ == '__main__':
-    
-    trace_file = 'mcmc_Koval_0526_1728.pickle'
+    #filename = './mcmc_Koval_0511_1609'
+    #filename = 'mcmc_Koval_0601_1835'
+    filename = 'mcmc_OHaraRudy_wMark_INa_0528_1833'
+    filepath = atrial_model.fit_data_dir+'/'+filename
+    chain = 2
+    burn_till = 0
     trace_metadata_file = 'mcmc_Koval_0526_1728_metadata.pickle'
-    #trace_file = './mcmc_Koval_0511_1609.pickle'
-    with open(trace_file,'rb') as file:
+    with open(filepath+'.pickle','rb') as file:
         db = pickle.load(file)
-    with open(trace_metadata_file,'rb') as file:
+    with open(filepath+'_metadata.pickle','rb') as file:
         model_metadata = pickle.load(file)
+    if db['_state_']['sampler']['status'] == 'paused':
+        current_iter = db['_state_']['sampler']['_current_iter']
+        for key in db.keys():
+            if key != '_state_':
+                db[key][chain] = db[key][chain][:current_iter]
     
     with Pool() as proc_pool:
 #        proc_pool = None
         temps = [0, 10, 20]
         for temp in temps:
-            b_temp = np.median(db['b_temp'][0][7500:], axis=0)
-            intercept = np.median(db['model_param_mean'][0][7500:], axis=0)
+            b_temp = np.median(db['b_temp'][chain][burn_till:], axis=0)
+            intercept = np.median(db['model_param_mean'][chain][burn_till:], axis=0)
             b_temp_eff = b_temp*temp
             sub_mps = intercept + b_temp_eff
-#            sub_mps[[0,1]] = 0
+#            sub_mps[[6,8,10]] = intercept[[6,8,10]] - 2*b_temp_eff[[6,8,10]]
+#            sub_mps[0] = intercept[0]
+#            sub_mps[[1]] = intercept[[1]] - b_temp_eff[[1]]
             mp_locs = model_metadata.mp_locs
             
             diff_fn = partial(calc_diff, model_parameters_full=model_params_initial,\
                             mp_locs=mp_locs, sim_func=sim_fs, data=datas,\
-                                l=0,pool=proc_pool,ssq=True)
+                                pool=proc_pool,ssq=True)
                         
             error = diff_fn(sub_mps, exp_params=exp_parameters, 
                             keys=[key for key_group in keys_all for key in key_group])

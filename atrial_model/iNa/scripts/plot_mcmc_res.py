@@ -36,13 +36,15 @@ atrial_model.run_sims_functions.plot1 = False #sim
 atrial_model.run_sims_functions.plot2 = False #diff
 atrial_model.run_sims_functions.plot3 = False #tau
 
-burn_till = 40000
+burn_till = 0
+chain = 2
 #burn_till = 60000
 
 if __name__ == '__main__':
     class ObjContainer():
         pass
-    filename = 'mcmc_OHaraRudy_wMark_INa_0603_1051'
+    filename = 'mcmc_Koval_0601_1835'
+#    filename = 'mcmc_OHaraRudy_wMark_INa_0603_1051'
     #filename = 'mcmc_OHara_0528_1805'
 #    filename = 'mcmc_OHaraRudy_wMark_INa_0528_1833'
     #filename = 'mcmc_Koval_0526_1728'
@@ -55,7 +57,7 @@ if __name__ == '__main__':
         current_iter = db['_state_']['sampler']['_current_iter']
         for key in db.keys():
             if key != '_state_':
-                db[key][0] = db[key][0][:current_iter]
+                db[key][chain] = db[key][chain][:current_iter]
     with open(filepath+'_metadata.pickle','rb') as file:
         model_metadata = pickle.load(file)
     group_names = []
@@ -66,7 +68,7 @@ if __name__ == '__main__':
     if plot_trace:
         
         trace = 'deviance'
-        trace_data = db[trace][0]
+        trace_data = db[trace][chain]
         fig = plt.figure(trace)
         ax = [fig.add_subplot(1,2,1)]
         ax.append(fig.add_subplot(1,2,2, sharey=ax[0]))
@@ -74,7 +76,7 @@ if __name__ == '__main__':
         ax[1].hist(trace_data, orientation='horizontal')
         
         trace = 'model_param_mean'
-        trace_data = db[trace][0]
+        trace_data = db[trace][chain]
         fig = plt.figure(trace)
         ax = [fig.add_subplot(1,2,1)]
         ax.append(fig.add_subplot(1,2,2, sharey=ax[0]))
@@ -88,7 +90,7 @@ if __name__ == '__main__':
         
             
         trace = 'model_param_tau'
-        trace_data = db[trace][0]
+        trace_data = db[trace][chain]
         fig = plt.figure(trace)
         ax = [fig.add_subplot(1,2,1)]
         ax.append(fig.add_subplot(1,2,2, sharey=ax[0]))
@@ -99,7 +101,7 @@ if __name__ == '__main__':
         
             
         trace = 'b_temp'
-        trace_data = db[trace][0]
+        trace_data = db[trace][chain]
         fig = plt.figure(trace)
         ax = [fig.add_subplot(1,2,1)]
         ax.append(fig.add_subplot(1,2,2, sharey=ax[0]))
@@ -109,7 +111,7 @@ if __name__ == '__main__':
         ax[1].legend(frameon=False)
         
         trace = 'error_tau'
-        trace_data = db[trace][0]
+        trace_data = db[trace][chain]
         fig = plt.figure(trace)
         ax = [fig.add_subplot(1,2,1)]
         ax.append(fig.add_subplot(1,2,2, sharey=ax[0]))
@@ -121,7 +123,7 @@ if __name__ == '__main__':
 
         
         trace = 'model_param'
-        trace_data = db[trace][0]
+        trace_data = db[trace][chain]
         for param_i in range(trace_data.shape[2]):
             fig = plt.figure(model_param_names[param_i])
             ax = [fig.add_subplot()]

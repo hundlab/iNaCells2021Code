@@ -119,20 +119,9 @@ def solveAndProcesses(durs, voltages, run_model, solver, dt, process, sub_sim_po
 
     return np.array(processed)
 
-# def scipySolver(flat_durs, flat_voltages, run_model, solver, dt=None):
-#     max_step = np.min(flat_durs[flat_durs > 0])/2
-#     wrap_run_model = ModelWrapper(flat_durs, flat_voltages, run_model, multiple=True)
-    
-#     res = solver(wrap_run_model, (0,wrap_run_model.times[-1]), run_model.state_vals,
-#                  first_step=dt, max_step = max_step)
-# #    print(res)
-#     times = res.t
-#     vMs = wrap_run_model.getvOld(times)
-#     iNa = run_model.calcCurrent(res.y, vMs)
-#     return times, iNa, vMs
 
 def run_sim(model_parameters, model, voltages, durs, sim_param, process, post_process,
-            dt=0.005, solver=None, retOptions=None, pool=None):#ret = [True]*3
+            dt=0.005, solver=None, retOptions=None, pool=None):
     out = []
     
     model_args = list(model_parameters)
@@ -229,110 +218,46 @@ def calc_results(model_parameters_part, model_parameters_full, sim_funcs,\
 #            raise e
             sub_dat = data[key]
             vals_sims[key] = error_fill*np.ones(sub_dat.shape[0])
-    
-#    with np.printoptions(precision=3):
-#        print(model_parameters_part)
     return vals_sims
 
-
-def calc_diff(model_parameters_part, model_parameters_full, sim_func, data, mp_locs=None, l=1, ssq=False, **kwargs):
-    if isList(sim_func) or isinstance(sim_func, dict):
-        return calc_diff_multiple(model_parameters_part, model_parameters_full, sim_func, data, mp_locs, l, ssq, **kwargs)
-    else:
-        return calc_diff_single(model_parameters_part, model_parameters_full, sim_func, data, mp_locs, l, ssq, **kwargs)
-
-
-def calc_diff_single(model_parameters_part, model_parameters_full, sim_func,\
-                     data, mp_locs=None, l=1, ssq=False, results=None):
-    if mp_locs is None:
-        mp_locs = np.ones_like(model_parameters_full, dtype=bool)
-    model_parameters_full[mp_locs] = model_parameters_part
-    sims_iter = sim_func(model_parameters_full)
-    vals_sim = next(next(sims_iter))
-    if run_sims_functions.plot2:
-        plt.figure("Overall")
-        plt.plot(data[:,0], vals_sim)
-        plt.scatter(data[:,0], data[:,1])
-    p_loss = 1/(model_parameters_full+1)-0.5
-    error = np.concatenate((vals_sim-data[:,1]), l*p_loss)
-    with np.printoptions(precision=3):
-        print(model_parameters_part)
-        print(0.5*np.sum(error**2),np.sum(p_loss**2))
-    if not results is None:
-        results.append((error,model_parameters_part))
-    if ssq:
-        return 0.5*np.sum(np.square(error))
-    else:
-        return error
-
-def calc_diff_multiple(model_parameters_part, model_parameters_full, sim_func,\
-                       data, mp_locs=None, l=1, ssq=False, pool=None,\
+def calc_diff(model_parameters_part, model_parameters_full, sim_func,\
+                       data, mp_locs=None, ssq=False, pool=None,\
                        exp_params=None, keys=None, results=None,error_fill=np.inf):
-    if mp_locs is None:
-        mp_locs = np.ones_like(model_parameters_full, dtype=bool)
-    model_parameters_full[mp_locs] = model_parameters_part
-    with np.printoptions(precision=3):
-        print(model_parameters_part)
+    
+    vals_sims = calc_results(model_parameters_part, model_parameters_full, sim_func,\
+                       data, mp_locs=mp_locs, pool=pool,\
+                       exp_params=exp_params,error_fill=np.nan)
+      
     error = []
-    sims_iters = {}
-    for key, sim_f_sing in sim_func.items():
-        sims_iter = sim_f_sing(model_parameters_full, pool=pool)
-        sims_iters[key] = sims_iter
-        next(sims_iter)
-    for key in sim_func:
+    for key, vals_sim in vals_sims.items():
         sub_dat = data[key]
-        sims_iter = sims_iters[key]
-        try:
-            vals_sim = next(sims_iter)
-            error += list((sub_dat[:,1] - vals_sim))
-            if run_sims_functions.plot2:
-                if exp_params is None:
-                    plt.figure("Overall")
-                else:
-                    figname = exp_params.loc[key, 'Sim Group']
-                    figname = figname if not pd.isna(figname) else 'Missing Label'
-                    plt.figure(figname)
-                plt.plot(sub_dat[:,0], vals_sim, label=key)
-                plt.scatter(sub_dat[:,0], sub_dat[:,1])
-                plt.legend()
-        except Exception as e:
-            import traceback
-            print(traceback.format_exc())
-            print(e)
-#            raise e
-            error += [error_fill]*sub_dat.shape[0]
-    # if not pool is None:
-    #     vals_sims_res = []
-    #     for i in range(len(sim_func)):
-            
-    #         vals_sims_res.append(pool.apply_async(sim_func[i], (model_parameters_full,)))
-    #     vals_sims = [res.get() for res in vals_sims_res]
- 
-
-    # for i in range(len(sim_func)):
-    #     sub_dat = data[i]
-    #     if not pool is None:
-    #         vals_sim = vals_sims[i]
-    #     else:
-    #         sim_f_sing = sim_func[i]
-    #         vals_sim = sim_f_sing(model_parameters_full)
-    #     error += list((sub_dat[:,1] - vals_sim))
-    #     if run_sims_functions.plot2:
-    #         if exp_params is None or keys is None:
-    #             plt.figure("Overall")
-    #         else:
-    #             plt.figure(exp_params.loc[keys[i], 'Sim Group'])
-    #         plt.plot(sub_dat[:,0], vals_sim)
-    #         plt.scatter(sub_dat[:,0], sub_dat[:,1])
+        error += list((sub_dat[:,1] - vals_sim))
     error = np.array(error)
-#    p_loss = 1/(model_parameters_full+1)-0.5
-#    error = np.concatenate((error, l*p_loss))
+    error[np.isnan(error)] = error_fill
+    
     with np.printoptions(precision=3):
 #        print(model_parameters_part)
         print(0.5*np.sum(error**2))
     if not results is None:
         results.append((error,model_parameters_part))
+    if run_sims_functions.plot2:
+        plot_results(vals_sims, data, exp_params)
     if ssq:
         return 0.5*np.sum(np.square(error))
     else:
         return error
+    
+    #    
+
+def plot_results(vals_sims, data, exp_params=None):
+    for key, vals_sim in vals_sims.items():
+        sub_dat = data[key]
+        if exp_params is None:
+            plt.figure("Overall")
+        else:
+            figname = exp_params.loc[key, 'Sim Group']
+            figname = figname if not pd.isna(figname) else 'Missing Label'
+            plt.figure(figname)
+        plt.plot(sub_dat[:,0], vals_sim, label=key)
+        plt.scatter(sub_dat[:,0], sub_dat[:,1])
+        plt.legend()

@@ -161,7 +161,7 @@ if __name__ == '__main__':
         proc_pool = None
         diff_fn = partial(calc_diff, model_parameters_full=model_params_initial,\
                         mp_locs=mp_locs, sim_func=sim_fs, data=datas,\
-                            l=0,pool=proc_pool,ssq=True)
+                           pool=proc_pool,ssq=True)
                     
         error = diff_fn(sub_mps, exp_params=exp_parameters, 
                         keys=[key for key_group in keys_all for key in key_group])
