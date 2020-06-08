@@ -26,8 +26,6 @@ import matplotlib.pyplot as plt
 from functools import partial
 
 
-    
-
 keys_keep = []
 
 #------------------------------------------------------------------------------

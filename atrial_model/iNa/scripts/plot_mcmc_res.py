@@ -28,22 +28,23 @@ from functools import partial
 import os
 
 
-plot_trace = True
-plot_sim = False
+plot_trace = False
+plot_sim = True
 plot_pymc_diag = False
 
 atrial_model.run_sims_functions.plot1 = False #sim
 atrial_model.run_sims_functions.plot2 = False #diff
 atrial_model.run_sims_functions.plot3 = False #tau
 
-burn_till = 0
-chain = 2
+burn_till = 5000
+chain = 0
 #burn_till = 60000
 
 if __name__ == '__main__':
     class ObjContainer():
         pass
-    filename = 'mcmc_Koval_0601_1835'
+    filename = 'mcmc_OHaraRudy_wMark_INa_0606_0047'
+    #filename = 'mcmc_Koval_0601_1835'
 #    filename = 'mcmc_OHaraRudy_wMark_INa_0603_1051'
     #filename = 'mcmc_OHara_0528_1805'
 #    filename = 'mcmc_OHaraRudy_wMark_INa_0528_1833'
