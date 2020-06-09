@@ -124,6 +124,9 @@ elif args.model_name == "OHaraRudy_wMark_INa":
     model_params_initial = np.zeros(model.num_params)
 
     mp_locs = np.arange(model.num_params)
+    
+else:
+    raise(KeyError(args.model_name+" is not a valid model name"))
 
 
 mp_locs = np.array(list(set(mp_locs)))

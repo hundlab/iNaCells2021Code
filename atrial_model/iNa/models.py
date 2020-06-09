@@ -94,15 +94,15 @@ class OHaraRudy_INa(SodiumChannelModel):
     CaMKa = 1e-5
 
     def __init__(self, GNaFactor=0, GNaLFactor=0, \
-                 mss_tauFactor=0, tm_mult1Factor=0, tm_tau1Factor=0,\
-                 tm_mult2Factor=0, tm_tau2Factor=0,\
-                 hss_tauFactor=0, thf_mult1Factor=0, thf_tau1Factor=0,\
-                 thf_mult2Factor=0, thf_tau2Factor=0,\
-                 ths_mult1Factor=0, ths_tau1Factor=0,\
-                 ths_mult2Factor=0, ths_tau2Factor=0,\
+                 mss_tauFactor=0, tm_maxFactor=0, tm_tau1Factor=0,\
+                 tm_shiftFactor=0, tm_tau2Factor=0,\
+                 hss_tauFactor=0, thf_maxFactor=0, thf_tau1Factor=0,\
+                 thf_shiftFactor=0, thf_tau2Factor=0,\
+                 ths_maxFactor=0, ths_tau1Factor=0,\
+                 ths_shiftFactor=0, ths_tau2Factor=0,\
                  Ahf_multFactor=0,\
-                 tj_baselineFactor=0, tj_mult1Factor=0, tj_tau1Factor=0,\
-                 tj_mult2Factor=0, tj_tau2Factor=0,\
+                 tj_baselineFactor=0, tj_maxFactor=0, tj_tau1Factor=0,\
+                 tj_shiftFactor=0, tj_tau2Factor=0,\
                  hssp_tauFactor=0, tssp_multFactor=0, tjp_multFactor=0,\
                  mLss_tauFactor=0, hLss_tauFactor=0,\
                  thL_baselineFactor=0, thLp_multFactor=0,\
@@ -121,33 +121,50 @@ class OHaraRudy_INa(SodiumChannelModel):
         #m gate 2
         self.mss_tau = 9.871*np.exp(mss_tauFactor)
 
-        self.tm_mult1 = 6.765*np.exp(tm_mult1Factor)
+        self.tm_max = 0.473824721*np.exp(tm_maxFactor)
         self.tm_tau1 = 34.77*np.exp(tm_tau1Factor)
-        self.tm_mult2 = 8.552*np.exp(tm_mult2Factor)
+        self.tm_shift = -57.6379999+tm_shiftFactor
         self.tm_tau2 = 5.955*np.exp(tm_tau2Factor)
+        tm_cshift = np.log(self.tm_tau1/self.tm_tau2)/(1/self.tm_tau1+1/self.tm_tau2)
+        tm_cmax = np.exp(tm_cshift/self.tm_tau1) + np.exp(-tm_cshift/self.tm_tau2)
+        self.tm_shift -= tm_cshift #shift correction
+        self.tm_max *= tm_cmax #height correction
 
         #h gate 7
         self.hss_tau = 6.086*np.exp(hss_tauFactor)
 
-        self.thf_mult1 = 1.432e-5*np.exp(thf_mult1Factor)
+        self.thf_max = 3.594172982376325*np.exp(thf_maxFactor)
         self.thf_tau1 = 6.285*np.exp(thf_tau1Factor)
-        self.thf_mult2 = 6.149*np.exp(thf_mult2Factor)
+        self.thf_shift = -57.639999999606744+thf_shiftFactor
         self.thf_tau2 = 20.27*np.exp(thf_tau2Factor)
-#12
-        self.ths_mult1 = 0.009794*np.exp(ths_mult1Factor)
+        thf_cshift = np.log(self.thf_tau2/self.thf_tau1)/(1/self.thf_tau2+1/self.thf_tau1)
+        thf_cmax = np.exp(thf_cshift/self.thf_tau2) + np.exp(-thf_cshift/self.thf_tau1)
+        self.thf_shift -= thf_cshift
+        self.thf_max *= thf_cmax
+
+        #12
+        self.ths_max = 5.894233734241695*np.exp(ths_maxFactor)
         self.ths_tau1 = 28.05*np.exp(ths_tau1Factor)
-        self.ths_mult2 = 0.3343*np.exp(ths_mult2Factor)
+        self.ths_shift = -66.94699999965118+ths_shiftFactor
         self.ths_tau2 = 56.66*np.exp(ths_tau2Factor)
+        ths_cshift = np.log(self.ths_tau2/self.ths_tau1)/(1/self.ths_tau2+1/self.ths_tau1)
+        ths_cmax = np.exp(ths_cshift/self.ths_tau2) + np.exp(-ths_cshift/self.ths_tau1)
+        self.ths_shift -= ths_cshift
+        self.ths_max *= ths_cmax
 
         mixingodds = np.exp(Ahf_multFactor+np.log(99))
         self.Ahf_mult = mixingodds/(mixingodds+1)# np.exp(Ahf_multFactor)
 
         #j gate 17
         self.tj_baseline = 2.038*np.exp(tj_baselineFactor)
-        self.tj_mult1 = 0.02136*np.exp(tj_mult1Factor)
+        self.tj_max = 27.726847365476033*np.exp(tj_maxFactor)
         self.tj_tau1 = 8.281*np.exp(tj_tau1Factor)
-        self.tj_mult2 = 0.3052*np.exp(tj_mult2Factor)
+        self.tj_shift = -90.60799999976416+tj_shiftFactor
         self.tj_tau2 = 38.45*np.exp(tj_tau2Factor)
+        tj_cshift = np.log(self.tj_tau2/self.tj_tau1)/(1/self.tj_tau2+1/self.tj_tau1)
+        tj_cmax = np.exp(tj_cshift/self.tj_tau2) + np.exp(-tj_cshift/self.tj_tau1)
+        self.tj_shift -= tj_cshift
+        self.tj_max *= tj_cmax
 
         # phosphorylated gates
         self.hssp_tau = 6.086*np.exp(hssp_tauFactor)
@@ -175,19 +192,19 @@ class OHaraRudy_INa(SodiumChannelModel):
         ss = ObjDict()
         
         ss.mss = 1.0 / (1.0 + np.exp((-(vOld + self.mss_shift)) / self.mss_tau));
-        tau.tm = 1.0 / (self.tm_mult1 * np.exp((vOld + 11.64) / self.tm_tau1) +
-                           self.tm_mult2 * np.exp(-(vOld + 77.42) / self.tm_tau2));
+        tau.tm = self.tm_max/(np.exp((vOld-self.tm_shift)/self.tm_tau1) 
+                                                + np.exp(-(vOld-self.tm_shift)/self.tm_tau2))
 
         ss.hss = 1.0 / (1 + np.exp((vOld + self.hss_shift) / self.hss_tau));
-        tau.thf = 1.0 / (self.thf_mult1 * np.exp(-(vOld + 1.196) / self.thf_tau1) +
-                            self.thf_mult2 * np.exp((vOld + 0.5096) / self.thf_tau2));
-        tau.ths = 1.0 / (self.ths_mult1 * np.exp(-(vOld + 17.95) / self.ths_tau1) +
-                            self.ths_mult2 * np.exp((vOld + 5.730) / self.ths_tau2));
+        tau.thf = self.thf_max/(np.exp((vOld-self.thf_shift)/self.thf_tau2) 
+                                                + np.exp(-(vOld-self.thf_shift)/self.thf_tau1))
+        tau.ths = self.ths_max/(np.exp((vOld-self.ths_shift)/self.ths_tau2) 
+                                                + np.exp(-(vOld-self.ths_shift)/self.ths_tau1))
 
 
         ss.jss = ss.hss#1.0 / (1 + np.exp((vOld + self.jss_shift) / self.jss_tau));#hss;
-        tau.tj = self.tj_baseline + 1.0 / (self.tj_mult1 * np.exp(-(vOld + 100.6) / self.tj_tau1) +
-                                   self.tj_mult2 * np.exp((vOld + 0.9941) / self.tj_tau2));
+        tau.tj = self.tj_baseline + self.tj_max/(np.exp((vOld-self.tj_shift)/self.tj_tau2) 
+                                                + np.exp(-(vOld-self.tj_shift)/self.tj_tau1))
 
         ss.hssp = 1.0 / (1 + np.exp((vOld + 89.1) / self.hssp_tau));
         tau.thsp = self.tssp_mult * tau.ths;

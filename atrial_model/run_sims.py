@@ -235,9 +235,9 @@ def calc_diff(model_parameters_part, model_parameters_full, sim_func,\
     error = np.array(error)
     error[np.isnan(error)] = error_fill
     
-    with np.printoptions(precision=3):
+#    with np.printoptions(precision=3):
 #        print(model_parameters_part)
-        print(0.5*np.sum(error**2))
+#        print(0.5*np.sum(error**2))
     if not results is None:
         results.append((error,model_parameters_part))
     if run_sims_functions.plot2:
