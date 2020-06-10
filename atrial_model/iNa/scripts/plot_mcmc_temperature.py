@@ -160,10 +160,11 @@ atrial_model.run_sims_functions.plot3 = False #tau
 if __name__ == '__main__':
     #filename = './mcmc_Koval_0511_1609'
     #filename = 'mcmc_Koval_0601_1835'
-    filename = 'mcmc_OHaraRudy_wMark_INa_0528_1833'
+    #filename = 'mcmc_OHaraRudy_wMark_INa_0528_1833'
+    filename = 'mcmc_OHaraRudy_wMark_INa_0606_0047'
     filepath = atrial_model.fit_data_dir+'/'+filename
-    chain = 2
-    burn_till = 0
+    chain = 0
+    burn_till = 5000
     trace_metadata_file = 'mcmc_Koval_0526_1728_metadata.pickle'
     with open(filepath+'.pickle','rb') as file:
         db = pickle.load(file)

@@ -5,9 +5,11 @@ Created on Mon Apr 13 09:55:44 2020
 
 @author: dgratz
 """
-
 import sys
-sys.path.append('../../../')
+import os
+sys.path.append(os.path.abspath(
+    os.path.join(os.path.dirname(__file__), 
+                 os.pardir, os.pardir, os.pardir)))
 
 from atrial_model.parse_cmd_args import args
 import atrial_model.run_sims_functions
@@ -56,7 +58,7 @@ if __name__ == '__main__':
  
         diff_fn = partial(calc_diff, model_parameters_full=model_params_initial,\
                         mp_locs=mp_locs, sim_func=sim_fs, data=datas,\
-                            l=0,pool=proc_pool,ssq=True,\
+                            pool=proc_pool,ssq=True,\
                             results=all_res)#
         minimizer_kwargs = {"method": lstsq_wrap, "options":{"ssq": False}}#"bounds": sub_mp_bounds,
         # res = optimize.basinhopping(diff_fn, sub_mps, \
@@ -76,7 +78,7 @@ if __name__ == '__main__':
         res.mp_locs = mp_locs
         res.model_name = args.model_name
 
-        filename = 'optimize_'+args.model_name+'_{cdate.month:02d}{cdate.day:02d}_{cdate.hour:02d}{cdate.minute:02d}.pkl'
+        filename = 'optimize_'+args.model_name+'_{cdate.month:02d}{cdate.day:02d}_{cdate.hour:02d}{cdate.minute:02d}.pickle'
         filename = filename.format(cdate=datetime.datetime.now())
         filepath = args.out_dir+'/'+filename
         with open(filepath, 'wb') as file:

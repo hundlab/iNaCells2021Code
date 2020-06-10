@@ -7,10 +7,11 @@ Created on Mon Apr 13 09:12:23 2020
 """
 
 from .setup_sim import setup_sim
+from .run_sims import SimRunner
 from .run_sims_functions import peakCurr, normalized2val
 
 import numpy as np
-from functools import partial
+from functools import partial, wraps
 import copy
 from sklearn.preprocessing import minmax_scale
 
@@ -36,26 +37,25 @@ def setupSimExp(sim_fs, datas, data, exp_parameters, keys_iin, model, process,\
         datas[key] = key_data
 
 
-def normalizeToBaseline(model_params, sim_f, baseline_locs=[0,3], **kwargs):
-    sim_f_baseline = copy.deepcopy(sim_f)
-    durs = sim_f_baseline.keywords['durs'][np.newaxis, 0, baseline_locs]
-    voltages = sim_f_baseline.keywords['voltages'][np.newaxis, 0, baseline_locs]
-    sim_f_baseline.keywords['durs'] = durs
-    sim_f_baseline.keywords['voltages'] = voltages
-    sim_f_baseline.keywords['process'] = peakCurr
-
-    try:
-        sim_f_iter = sim_f_baseline(model_params)
-        next(sim_f_iter)
-        baseline = next(sim_f_iter)
-        process = partial(normalized2val, durn=3, val=baseline)
-        
-        sim_f_iter = sim_f(model_params, process=process, **kwargs)
-        for res in sim_f_iter:
-            yield res
-    except Exception as e:
-        yield
-        raise e
+def normalizeToBaseline(sim_f, baseline_locs=[0,3]):
+    @wraps(sim_f.run_sim)
+    def run_sim(self, model_parameters, pool=None):
+        sim_f_baseline = copy.deepcopy(sim_f)
+        durs = sim_f_baseline.durs[np.newaxis, 0, baseline_locs]
+        voltages = sim_f_baseline.voltages[np.newaxis, 0, baseline_locs]
+        sim_f_baseline.durs = durs
+        sim_f_baseline.voltages = voltages
+        sim_f_baseline.process = peakCurr
+        try:
+            sim_f_baseline.run_sim(model_parameters, pool=pool)
+            baseline = sim_f_baseline.get_output()
+            process = partial(normalized2val, durn=3, val=baseline)
+            self.process=process
+            self.run_sim(model_parameters, pool=pool)
+        except Exception as e: 
+            self.exception = e
+    sim_f.run_sim = run_sim
+    return sim_f
 
 def resort(vals, **kwargs):
     return vals.flatten('F')
