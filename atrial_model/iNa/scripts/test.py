@@ -32,9 +32,9 @@ keys_keep = []
 #------------------------------------------------------------------------------
 #------------------------------------------------------------------------------
 
-##iv curve
-#keys_iin = [
-#('8928874_7',	'Dataset C day 1')#, ('8928874_7',	'Dataset C day 3'),
+# #iv curve
+# keys_iin = [
+# ('8928874_7',	'Dataset C day 1'), ('8928874_7',	'Dataset C day 3'),
 # ('8928874_7',	'Dataset C day 5'), ('8928874_7',	'Dataset C fresh'),
 # #('12890054_3',	'Dataset C Control'), ('12890054_3',	'Dataset D Control'),
 # #('12890054_5',	'Dataset C Control'), ('12890054_5',	'Dataset D Control'),
@@ -42,8 +42,8 @@ keys_keep = []
 # ('1323431_3',	'Dataset A 20'), ('1323431_3',	'Dataset A 5'),
 # ('1323431_4',	'Dataset B Control'),
 # ('21647304_1',	'Dataset B Adults'), ('21647304_1', 'Dataset B Pediatrics')
-#]
-#keys_keep += keys_iin
+# ]
+# keys_keep += keys_iin
 
 
 # ##activation normalized to driving force
@@ -58,14 +58,14 @@ keys_keep = []
 
 
 
-# I2/I1 Recovery
-#keys_iin = [('1323431_8', 'Dataset A -140')#, ('1323431_8',	'Dataset A -120'),\
-#            ('1323431_8',	'Dataset A -100'),\
-#            ('21647304_3',	'Dataset C Adults'), ('21647304_3',	'Dataset C Pediatrics'),\
-#            ('8928874_9', 'Dataset fresh'), ('8928874_9', 'Dataset day 1'),\
-#            ('8928874_9', 'Dataset day 3'), ('8928874_9', 'Dataset day 5')
-#]
-#keys_keep += keys_iin
+# # I2/I1 Recovery
+# keys_iin = [('1323431_8', 'Dataset A -140'), ('1323431_8',	'Dataset A -120'),\
+#             ('1323431_8',	'Dataset A -100'),\
+#             ('21647304_3',	'Dataset C Adults'), ('21647304_3',	'Dataset C Pediatrics'),\
+#             ('8928874_9', 'Dataset fresh'), ('8928874_9', 'Dataset day 1'),\
+#             ('8928874_9', 'Dataset day 3'), ('8928874_9', 'Dataset day 5')
+# ]
+# keys_keep += keys_iin
 
 
 # # #recovery normalized to preprepulse
@@ -83,17 +83,17 @@ keys_keep = []
 
 
 
-# ##inactivation normalized to no prepulse
-# keys_iin = [
-#     ('7971163_4', 'Dataset 32ms'), ('7971163_4', 'Dataset 64ms'),
-#             ('7971163_4', 'Dataset 128ms'), ('7971163_4', 'Dataset 256ms'),
-#               ('7971163_4', 'Dataset 512ms'),\
+##inactivation normalized to no prepulse
+keys_iin = [
+    ('7971163_4', 'Dataset 32ms'), ('7971163_4', 'Dataset 64ms'),
+            ('7971163_4', 'Dataset 128ms'), ('7971163_4', 'Dataset 256ms'),
+              ('7971163_4', 'Dataset 512ms'),\
 
-#             ('8928874_8',	'Dataset C fresh'), ('8928874_8',	'Dataset C day 1'),\
-#             ('8928874_8',	'Dataset C day 3'), ('8928874_8',	'Dataset C day 5')
-#             ]
-# ##('21647304_3',	'Dataset B Adults'), ('21647304_3',	'Dataset B Pediatrics')
-# keys_keep += keys_iin
+            ('8928874_8',	'Dataset C fresh'), ('8928874_8',	'Dataset C day 1'),\
+            ('8928874_8',	'Dataset C day 3'), ('8928874_8',	'Dataset C day 5')
+            ]
+##('21647304_3',	'Dataset B Adults'), ('21647304_3',	'Dataset B Pediatrics')
+keys_keep += keys_iin
 
 
 # #inactivation normalized to first
@@ -112,11 +112,11 @@ keys_keep = []
 # #            ('21647304_2', 'Dataset C Adults'), ('21647304_2', 'Dataset C Pediactric')]
 # keys_keep += keys_iin
 
-#tau activation
-keys_iin = [('8928874_8',	'Dataset D fresh'), ('8928874_8',	'Dataset D day 1'),\
-            ('8928874_8',	'Dataset D day 3'), ('8928874_8',	'Dataset D day 5'),
-            ('7971163_3',	'Dataset C')]
-keys_keep += keys_iin
+# #tau activation
+# keys_iin = [('8928874_8',	'Dataset D fresh'), ('8928874_8',	'Dataset D day 1'),\
+#             ('8928874_8',	'Dataset D day 3'), ('8928874_8',	'Dataset D day 5'),
+#             ('7971163_3',	'Dataset C')]
+# keys_keep += keys_iin
 
 
 
@@ -157,11 +157,11 @@ atrial_model.run_sims_functions.plot3 = False #tau
 if __name__ == '__main__':
     class ObjContainer():
         pass
-    filename = 'optimize_each_OHaraRudy_wMark_INa_0609_1244'
-    filepath = atrial_model.fit_data_dir+'/'+filename
-    with open(filepath+'.pickle','rb') as file:
-        db = pickle.load(file)
-    sub_mps = {key: res.x for key, res in db.res.items()}
+    # filename = 'optimize_each_OHaraRudy_wMark_INa_0609_1244'
+    # filepath = atrial_model.fit_data_dir+'/'+filename
+    # with open(filepath+'.pickle','rb') as file:
+    #     db = pickle.load(file)
+    # sub_mps = {key: res.x for key, res in db.res.items()}
     
     with Pool() as proc_pool:
 #        proc_pool = None
