@@ -119,39 +119,97 @@ def solveAndProcesses(durs, voltages, run_model, solver, dt, process, sub_sim_po
 
     return np.array(processed)
 
-
-def run_sim(model_parameters, model, voltages, durs, sim_param, process, post_process,
-            dt=0.005, solver=None, retOptions=None, pool=None):
-    out = []
-    
-    model_args = list(model_parameters)
-    model_kwargs = {'TEMP': sim_param['TEMP'], 'naO': sim_param['naO'], 'naI': sim_param['naI']}
-    for sub_sim_pos in range(voltages.shape[0]):
-        run_model = model(*model_args, **model_kwargs)
-        if not retOptions is None:
-            run_model.retOptions = retOptions
-
-        if pool is not None:
-            processed = pool.apply_async(solveAndProcesses, 
-                                                   (durs, voltages, \
-                                                    run_model, solver, dt, \
-                                                    process, sub_sim_pos))
-        else:
-            processed = solveAndProcesses(durs, voltages, run_model, \
-                                          solver, dt,  process, sub_sim_pos)
+class SimRunner():
+    def __init__(self, model, voltages, durs, sim_param, process, post_process,
+            dt=0.005, solver=None, retOptions=None):
+        self.model = model
+        self.voltages = voltages
+        self.durs = durs
+        self.sim_param = sim_param
+        self.process = process
+        self.post_process = post_process
+        self.dt = dt
+        self.solver = solver
+        self.retOptions = retOptions
+        self.out = []
+        self.pooled = False
+        self.exception = None
         
-        out.append(processed)
+    def run_sim(self, model_parameters, pool=None):
+        self.out = []
+        self.pool = not pool is None
+
+        model_args = list(model_parameters)
+        model_kwargs = dict(TEMP=self.sim_param['TEMP'],
+                            naO=self.sim_param['naO'],
+                            naI=self.sim_param['naI'])
+        try:
+            for sub_sim_pos in range(self.voltages.shape[0]):
+                run_model = self.model(*model_args, **model_kwargs)
+                if not self.retOptions is None:
+                    run_model.retOptions = self.retOptions
+                
+                solveAProc_args = (self.durs, self.voltages, \
+                                   run_model, self.solver, self.dt, \
+                                   self.process, sub_sim_pos)
+                if pool is not None:
+                    processed = pool.apply_async(solveAndProcesses, solveAProc_args)
+                else:
+                    processed = solveAndProcesses(*solveAProc_args)
+                self.out.append(processed)
+
+        except Exception as e:
+            self.exception = e
+            return
     
-    yield
-    if pool is not None:
-        out2 = []
-        for processed in out:
-            out2.append(processed.get())
-        out = out2
-    out = np.array(out)
-    if not post_process is None:
-        out =  post_process(np.array(out))
-    yield np.squeeze(out)
+    def get_output(self):
+        if not self.exception is None:
+            raise self.exception
+        out = self.out
+        
+        if self.pool:
+            out2 = []
+            for processed in out:
+                out2.append(processed.get())
+            out = out2
+        out = np.array(out)
+        if not self.post_process is None:
+            out =  self.post_process(np.array(out))
+        return np.squeeze(out)
+        
+
+# def run_sim(model_parameters, model, voltages, durs, sim_param, process, post_process,
+#             dt=0.005, solver=None, retOptions=None, pool=None):
+#     out = []
+    
+#     model_args = list(model_parameters)
+#     model_kwargs = {'TEMP': sim_param['TEMP'], 'naO': sim_param['naO'], 'naI': sim_param['naI']}
+#     for sub_sim_pos in range(voltages.shape[0]):
+#         run_model = model(*model_args, **model_kwargs)
+#         if not retOptions is None:
+#             run_model.retOptions = retOptions
+
+#         if pool is not None:
+#             processed = pool.apply_async(solveAndProcesses, 
+#                                                    (durs, voltages, \
+#                                                     run_model, solver, dt, \
+#                                                     process, sub_sim_pos))
+#         else:
+#             processed = solveAndProcesses(durs, voltages, run_model, \
+#                                           solver, dt,  process, sub_sim_pos)
+        
+#         out.append(processed)
+    
+#     yield
+#     if pool is not None:
+#         out2 = []
+#         for processed in out:
+#             out2.append(processed.get())
+#         out = out2
+#     out = np.array(out)
+#     if not post_process is None:
+#         out =  post_process(np.array(out))
+#     yield np.squeeze(out)
 
 
 
@@ -203,13 +261,11 @@ def calc_results(model_parameters_part, model_parameters_full, sim_funcs,\
             model_parameters_full[mp_locs] = model_parameters_part[key]
         else:
             model_parameters_full[mp_locs] = model_parameters_part
-        sims_iter = sim_func(model_parameters_full, pool=pool)
-        sims_iters[key] = sims_iter
-        next(sims_iter)
-    for key in sim_funcs:
-        sims_iter = sims_iters[key]
+        sim_func.run_sim(model_parameters_full, pool=pool)
+        sims_iters[key] = sim_func
+    for key, sim_func in sim_funcs.items():
         try:
-            vals_sim = next(sims_iter)
+            vals_sim = sim_func.get_output()
             vals_sims[key] = vals_sim
             if vals_sim is None:
                 raise ValueError("sims_iter returned none")
