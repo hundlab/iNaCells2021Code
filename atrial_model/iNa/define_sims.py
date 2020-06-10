@@ -114,7 +114,7 @@ if run_fits['Inactivation']:
 #                post_process=normalizeToBaseline,
                 setup_sim_args={'sim_args':{'solver': solver}})
     for key in keys_iin:
-        sim_fs[key] = partial(normalizeToBaseline, sim_f=sim_fs[key])
+        sim_fs[key] = normalizeToBaseline(sim_f=sim_fs[key])
     
 
     # inactivation normalized to first

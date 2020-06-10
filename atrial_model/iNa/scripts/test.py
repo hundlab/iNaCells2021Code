@@ -24,6 +24,7 @@ from multiprocessing import Pool
 import numpy as np
 import matplotlib.pyplot as plt
 from functools import partial
+import pickle
 
 
 keys_keep = []
@@ -112,8 +113,8 @@ keys_keep = []
 # keys_keep += keys_iin
 
 #tau activation
-keys_iin = [#('8928874_8',	'Dataset D fresh'), ('8928874_8',	'Dataset D day 1'),\
-            #('8928874_8',	'Dataset D day 3'), ('8928874_8',	'Dataset D day 5'),
+keys_iin = [('8928874_8',	'Dataset D fresh'), ('8928874_8',	'Dataset D day 1'),\
+            ('8928874_8',	'Dataset D day 3'), ('8928874_8',	'Dataset D day 5'),
             ('7971163_3',	'Dataset C')]
 keys_keep += keys_iin
 
@@ -144,14 +145,8 @@ datas = {key: data for key, data in datas.items() if key in keys_keep}
 #res = pickle.load(open(atrial_model.fit_data_dir+'/optimize_Koval_0423_0326.pkl','rb'))
 #mp_locs = res.mp_locs
 #sub_mps = res.x
-                          #0.5
-                          #-1
-sub_mps = np.array([ -1.59999888,   1.27981324,   1.96099691,  12.99440165,
-         -1.09836915,  -0.94753396,   6.52616057,  -0.21457031,
-          0.02369366,   4.71375773, -10.70700177,   1.82653979,
-          1.15043022,  -0.43000166,  -2.93407328, -10.7236615 ,
-         -0.77094265,   4.99986988,   2.33300777,   0.55223709,
-         -2.9500736 ,  -8.59021442,   2.74447697,   1.37202304])
+
+
 
 #------------------------------------------------------------------------------
 #------------------------------------------------------------------------------
@@ -160,8 +155,16 @@ atrial_model.run_sims_functions.plot2 = True #diff
 atrial_model.run_sims_functions.plot3 = False #tau
 
 if __name__ == '__main__':
+    class ObjContainer():
+        pass
+    filename = 'optimize_each_OHaraRudy_wMark_INa_0609_1244'
+    filepath = atrial_model.fit_data_dir+'/'+filename
+    with open(filepath+'.pickle','rb') as file:
+        db = pickle.load(file)
+    sub_mps = {key: res.x for key, res in db.res.items()}
+    
     with Pool() as proc_pool:
-        proc_pool = None
+#        proc_pool = None
         diff_fn = partial(calc_diff, model_parameters_full=model_params_initial,\
                         mp_locs=mp_locs, sim_func=sim_fs, data=datas,\
                            pool=proc_pool,ssq=True)

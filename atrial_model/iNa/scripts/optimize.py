@@ -78,7 +78,7 @@ if __name__ == '__main__':
         res.mp_locs = mp_locs
         res.model_name = args.model_name
 
-        filename = 'optimize_'+args.model_name+'_{cdate.month:02d}{cdate.day:02d}_{cdate.hour:02d}{cdate.minute:02d}.pkl'
+        filename = 'optimize_'+args.model_name+'_{cdate.month:02d}{cdate.day:02d}_{cdate.hour:02d}{cdate.minute:02d}.pickle'
         filename = filename.format(cdate=datetime.datetime.now())
         filepath = args.out_dir+'/'+filename
         with open(filepath, 'wb') as file:
