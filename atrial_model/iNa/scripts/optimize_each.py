@@ -145,8 +145,8 @@ keys_keep += keys_iin
 #------------------------------------------------------------------------------
 
 keys_keep = set(keys_keep)
-sim_fs = {key: sim_f for key, sim_f in sim_fs.items() if key in keys_keep}
-datas = {key: data for key, data in datas.items() if key in keys_keep}
+# sim_fs = {key: sim_f for key, sim_f in sim_fs.items() if key in keys_keep}
+# datas = {key: data for key, data in datas.items() if key in keys_keep}
 
 
 np.seterr(all='ignore')
@@ -188,7 +188,7 @@ if __name__ == '__main__':
 
             for key in sim_fs:
                 res.res[key] = fut_results[key].result()
-        res.keys_all = keys_keep
+        res.keys_all = keys_all
         res.fits = set(rfs for rfs in run_fits if run_fits[rfs])
         res.mp_locs = mp_locs
         res.model_name = args.model_name

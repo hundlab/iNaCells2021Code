@@ -14,6 +14,7 @@ import numpy as np
 from functools import partial, wraps
 import copy
 from sklearn.preprocessing import minmax_scale
+import types
 
 
 def setupSimExp(sim_fs, datas, data, exp_parameters, keys_iin, model, process,\
@@ -38,23 +39,26 @@ def setupSimExp(sim_fs, datas, data, exp_parameters, keys_iin, model, process,\
 
 
 def normalizeToBaseline(sim_f, baseline_locs=[0,3]):
+    run_sim_base = sim_f.run_sim
+    
+    sim_f_baseline = copy.deepcopy(sim_f)
+    durs = sim_f_baseline.durs[np.newaxis, 0, baseline_locs]
+    voltages = sim_f_baseline.voltages[np.newaxis, 0, baseline_locs]
+    sim_f_baseline.durs = durs
+    sim_f_baseline.voltages = voltages
+    sim_f_baseline.process = peakCurr
+    
     @wraps(sim_f.run_sim)
     def run_sim(self, model_parameters, pool=None):
-        sim_f_baseline = copy.deepcopy(sim_f)
-        durs = sim_f_baseline.durs[np.newaxis, 0, baseline_locs]
-        voltages = sim_f_baseline.voltages[np.newaxis, 0, baseline_locs]
-        sim_f_baseline.durs = durs
-        sim_f_baseline.voltages = voltages
-        sim_f_baseline.process = peakCurr
         try:
             sim_f_baseline.run_sim(model_parameters, pool=pool)
             baseline = sim_f_baseline.get_output()
             process = partial(normalized2val, durn=3, val=baseline)
-            self.process=process
-            self.run_sim(model_parameters, pool=pool)
+            self.process = process
+            run_sim_base(model_parameters, pool=pool)
         except Exception as e: 
             self.exception = e
-    sim_f.run_sim = run_sim
+    sim_f.run_sim = types.MethodType(run_sim, sim_f)
     return sim_f
 
 def resort(vals, **kwargs):
