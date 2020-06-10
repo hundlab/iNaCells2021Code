@@ -86,7 +86,7 @@ if __name__ == '__main__':
         db = 'pickle'
         if not args.previous_run is None and not args.previous_run_manual:
             db = pymc.database.pickle.load(args.previous_run)
-        else:
+        elif not args.previous_run is None:
                 with open(args.previous_run,'rb') as file:
                     old_db = pickle.load(file)
                 prev_state = old_db['_state_']['stochastics']

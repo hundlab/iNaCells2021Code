@@ -52,7 +52,7 @@ class ModelWrapper():
         vOld = self.flat_voltages[loc]
         return vOld
     def __call__(self, t, vals):
-        if self.call_count > 20000 and self.call_count/t > 20:
+        if self.call_count > 50000 and self.call_count/t > 40:
             print("Error too many calls", self.call_count/t, self.call_count)
             self.call_count = 1
             #raise ValueError
