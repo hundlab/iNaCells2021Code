@@ -28,8 +28,8 @@ from functools import partial
 import os
 
 
-plot_trace = False
-plot_sim = True
+plot_trace = True
+plot_sim = False
 plot_pymc_diag = False
 
 atrial_model.run_sims_functions.plot1 = False #sim

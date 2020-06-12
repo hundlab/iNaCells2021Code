@@ -10,7 +10,7 @@ from ..data_loader import load_data_parameters, all_data
 from ..run_sims_functions import normalize2prepulse, \
 peakCurr, normalized2val, calcExpTauInact, monoExp, biExp,\
 calcExpTauAct, biExp_params, monoExp_params
-
+from atrial_model.parse_cmd_args import args
 from ..run_sims import calc_diff
 from ..setup_sim import setup_sim
 from ..setup_sim_functions import setupSimExp, normalizeToBaseline, normalizeToFirst,\
@@ -229,6 +229,13 @@ if run_fits['Activation']:
     ]
     keys_all.append(keys_iin)
     
+    process_data = None
+    post_process = None
+    if args.normalize_all:
+        process_data = minNorm_data
+        post_process = minNorm
+
+    
     setupSimExp(sim_fs=sim_fs,\
                 datas=datas,\
                 data=data,\
@@ -237,8 +244,8 @@ if run_fits['Activation']:
                 model=model,\
                 process=peakCurr,\
                 dt=dt,\
-                process_data=None,
-                post_process=None,
+                process_data=process_data,
+                post_process=post_process,
                 setup_sim_args={'sim_args':{'solver': solver}})
 
 

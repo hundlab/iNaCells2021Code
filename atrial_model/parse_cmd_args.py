@@ -17,6 +17,7 @@ parser.add_argument('--max_time', nargs='?', type=float, help='Max time allowed 
 parser.add_argument('--previous_run', nargs='?')
 parser.add_argument('--model_name', nargs=1, required=True)
 parser.add_argument('--previous_run_manual', default=False, const=True, action='store_const')
+parser.add_argument('--normalize_all', default=False, const=True, action='store_const')
 
 
 args = parser.parse_args(sys.argv)

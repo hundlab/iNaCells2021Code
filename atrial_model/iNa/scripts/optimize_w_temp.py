@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Created on Mon Apr 13 09:55:44 2020
+Created on Fri Jun 12 10:40:40 2020
 
-@author: dgratz
+@author: grat05
 """
+
+
 import sys
 import os
 sys.path.append(os.path.abspath(
@@ -45,29 +47,44 @@ atrial_model.run_sims_functions.plot2 = False #diff
 atrial_model.run_sims_functions.plot3 = False #tau
 
 
+#
+
+def calc_params_and_run(betas, mp_locs, temperature, **kwargs):
+    intercept = betas[:len(mp_locs)]
+    b_temp = betas[len(mp_locs):]
+    model_params = {key:
+                    intercept + temp*b_temp
+                    for key, temp in temperature.items()}
+    
+    return calc_diff(model_params, mp_locs=mp_locs, **kwargs)
+    
 
 if __name__ == '__main__':
     with Pool() as proc_pool:
         mp_locs = list(set(mp_locs))
         sub_mps = model_params_initial[mp_locs]
         sub_mp_bounds = np.array(model().param_bounds)[mp_locs]
+        temp_b_bounds = np.ones_like(sub_mp_bounds)*np.array([-1,1])
+        betas_bounds = np.concatenate((sub_mp_bounds, temp_b_bounds), axis=0)
         min_res = []
         all_res = []
 
         # accept_test=partial(check_bounds, bounds=sub_mp_bounds))
 #            minimizer_kwargs = {"method": "BFGS", "options": {"maxiter":100}}
- 
-        diff_fn = partial(calc_diff, model_parameters_full=model_params_initial,\
-                        mp_locs=mp_locs, sim_func=sim_fs, data=datas,\
-                            pool=proc_pool,ssq=True,\
-                            results=all_res)#
+
+        
+        diff_fn = partial(calc_params_and_run, temperature=exp_parameters['temp ( K )'],
+                          model_parameters_full=model_params_initial,
+                        mp_locs=mp_locs, sim_func=sim_fs, data=datas,
+                            pool=proc_pool,ssq=True,
+                            results=all_res)
         minimizer_kwargs = {"method": lstsq_wrap, "options":{"ssq": False}}#"bounds": sub_mp_bounds,
         # res = optimize.basinhopping(diff_fn, sub_mps, \
         #                             minimizer_kwargs=minimizer_kwargs,\
         #                             niter=10, T=80,\
         #                             callback=partial(save_results, results=min_res),\
         #                             stepsize=1)#T=80
-        res = optimize.dual_annealing(diff_fn, bounds=sub_mp_bounds,
+        res = optimize.dual_annealing(diff_fn, bounds=betas_bounds,
                                           no_local_search=True,
                                           local_search_options=minimizer_kwargs,
                                           maxiter=100,maxfun=6000)
@@ -79,8 +96,10 @@ if __name__ == '__main__':
         res.fits = set(rfs for rfs in run_fits if run_fits[rfs])
         res.mp_locs = mp_locs
         res.model_name = args.model_name
+        res.intersept = res.x[:len(mp_locs)]
+        res.b_temp = res.x[len(mp_locs):]
 
-        filename = 'optimize_'+args.model_name+'_{cdate.month:02d}{cdate.day:02d}_{cdate.hour:02d}{cdate.minute:02d}.pickle'
+        filename = 'optimize_temp_'+args.model_name+'_{cdate.month:02d}{cdate.day:02d}_{cdate.hour:02d}{cdate.minute:02d}.pickle'
         filename = filename.format(cdate=datetime.datetime.now())
         filepath = args.out_dir+'/'+filename
         with open(filepath, 'wb') as file:

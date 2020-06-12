@@ -220,7 +220,7 @@ class SimResults():
         self.keywords = kwargs
 #        self.cache = {}
         self.call_counter = 0
-    def __call__(self, model_parameters_list, keys):
+    def __call__(self, model_parameters_list, keys, flatten=True):
         model_parameters_dict = {key: np.array(model_parameters, dtype=float) 
                                  for key, model_parameters in 
                                  zip(keys,model_parameters_list)}
@@ -242,7 +242,10 @@ class SimResults():
 
         res = []
         for key in keys:
-            res += list(new_cache[key])
+            if flatten:
+                res += list(new_cache[key])
+            else:
+                res.append(new_cache[key])
         res = np.array(res)
         return res
 
