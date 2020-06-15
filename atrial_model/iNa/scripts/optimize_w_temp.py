@@ -76,8 +76,7 @@ if __name__ == '__main__':
         diff_fn = partial(calc_params_and_run, temperature=exp_parameters['temp ( K )'],
                           model_parameters_full=model_params_initial,
                         mp_locs=mp_locs, sim_func=sim_fs, data=datas,
-                            pool=proc_pool,ssq=True,
-                            results=all_res)
+                            pool=proc_pool,ssq=True)
         minimizer_kwargs = {"method": lstsq_wrap, "options":{"ssq": False}}#"bounds": sub_mp_bounds,
         # res = optimize.basinhopping(diff_fn, sub_mps, \
         #                             minimizer_kwargs=minimizer_kwargs,\
