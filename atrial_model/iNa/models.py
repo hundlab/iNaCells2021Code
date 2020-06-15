@@ -7,6 +7,7 @@ Created on Tue Mar 17 10:31:31 2020
 """
 import numpy as np
 import pandas as pd
+from functools import wraps
 
 class ObjDict():
     def __repr__(self):
@@ -44,13 +45,7 @@ class SodiumChannelModel():
         return pd.DataFrame(np.array(self._recArray), columns=self.recArrayNames)
     
     def calc_constants(self, vOld):
-        if self.memoize:
-            if self.lastVal is not None and np.array_equal(self.lastVal[0], vOld):
-                return self.lastVal[1]
-        ret = self.calc_constants(vOld)
-        if self.memoize:
-            self.lastVal = (vOld, ret)
-        return ret
+        pass
     
     def jac(self, vOld):
         pass
@@ -70,7 +65,17 @@ class SodiumChannelModel():
         vals += ddt*dt
         return self.calcCurrent(vals, vOld, setRecArray=record)
     
-
+def memoize_calc_constants(calc_constants):
+    def memoized(self, vOld):
+        if self.memoize:
+            if self.lastVal is not None and np.array_equal(self.lastVal[0], vOld):
+                return self.lastVal[1]
+        ret = calc_constants(self, vOld)
+        if self.memoize:
+            self.lastVal = (vOld, ret)
+        return ret
+    return memoized
+        
 
 class OHaraRudy_INa(SodiumChannelModel):
     num_params = 33
@@ -186,7 +191,7 @@ class OHaraRudy_INa(SodiumChannelModel):
         self.jss_tau = 6.086*np.exp(jss_tauFactor)
 
 
-    
+    @memoize_calc_constants
     def calc_constants(self, vOld):
         tau = ObjDict()
         ss = ObjDict()
@@ -440,7 +445,7 @@ class OHaraRudy_wMark_INa(SodiumChannelModel):
         self.lastddt = None
             
 
-    
+    @memoize_calc_constants
     def calc_constants(self, vOld):
         
         vOld = np.array(vOld,ndmin=1)
@@ -686,7 +691,7 @@ class Koval_ina(SodiumChannelModel):
                                      0,0])
         self.RanolazineConc = 0
 
-
+    @memoize_calc_constants
     def calc_constants(self, vOld):
         exp = np.exp
         a = np.zeros(10)

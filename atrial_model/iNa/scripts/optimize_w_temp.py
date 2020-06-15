@@ -61,10 +61,11 @@ def calc_params_and_run(betas, mp_locs, temperature, **kwargs):
 
 if __name__ == '__main__':
     with Pool() as proc_pool:
+#        proc_pool = None
         mp_locs = list(set(mp_locs))
         sub_mps = model_params_initial[mp_locs]
         sub_mp_bounds = np.array(model().param_bounds)[mp_locs]
-        temp_b_bounds = np.ones_like(sub_mp_bounds)*np.array([-1,1])
+        temp_b_bounds = np.ones_like(sub_mp_bounds)*np.array([-0.1,0.1])
         betas_bounds = np.concatenate((sub_mp_bounds, temp_b_bounds), axis=0)
         min_res = []
         all_res = []
