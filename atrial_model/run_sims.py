@@ -276,7 +276,7 @@ def calc_results(model_parameters_part, model_parameters_full, sim_funcs,\
             print(e)
 #            raise e
             sub_dat = data[key]
-            vals_sims[key] = error_fill*np.ones(sub_dat.shape[0])
+            vals_sims[key] = error_fill*np.ones(sub_dat.shape[0])        
     return vals_sims
 
 def calc_diff(model_parameters_part, model_parameters_full, sim_func,\

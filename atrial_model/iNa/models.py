@@ -64,8 +64,9 @@ class SodiumChannelModel():
         ddt = self.ddtcalc(vals, vOld)
         vals += ddt*dt
         return self.calcCurrent(vals, vOld, setRecArray=record)
-    
+
 def memoize_calc_constants(calc_constants):
+    @wraps(calc_constants)
     def memoized(self, vOld):
         if self.memoize:
             if self.lastVal is not None and np.array_equal(self.lastVal[0], vOld):

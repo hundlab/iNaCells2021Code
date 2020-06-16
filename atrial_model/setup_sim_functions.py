@@ -53,6 +53,7 @@ def normalizeToBaseline(sim_f, baseline_locs=[0,3]):
         try:
             sim_f_baseline.run_sim(model_parameters, pool=pool)
             baseline = sim_f_baseline.get_output()
+#            print(baseline)
             process = partial(normalized2val, durn=3, val=baseline)
             self.process = process
             run_sim_base(model_parameters, pool=pool)
