@@ -25,7 +25,7 @@ from atrial_model.parse_cmd_args import args
 import atrial_model.run_sims_functions
 from atrial_model.run_sims import calc_results, SimResults
 from atrial_model.iNa.define_sims import sim_fs, datas, keys_all, exp_parameters
-from atrial_model.iNa.stat_model_3 import StatModel
+from atrial_model.iNa.stat_model_3 import StatModel, key_frame
 from atrial_model.iNa.model_setup import model_params_initial, mp_locs, sub_mps, model
 
 class ObjContainer():
@@ -52,7 +52,6 @@ if __name__ == '__main__':
     model_db = ObjContainer()
     model_db.model_params_initial = model_params_initial
     model_db.mp_locs = mp_locs
-    model_db.keys_all = keys_all
     model_db.param_bounds = model.param_bounds
     model_db.bio_model_name = args.model_name
 
@@ -63,22 +62,26 @@ if __name__ == '__main__':
                         mp_locs=mp_locs, data=datas,error_fill=0,\
                         pool=proc_pool)
         run_biophysical = SimResults(calc_fn=calc_fn, sim_funcs=sim_fs)
-
+        key_frame = key_frame(keys_all, exp_parameters)
         
-        with StatModel(run_biophysical, keys_all, datas, 
-                                mp_locs, model, 
-                                exp_parameters['temp ( K )']) as stat_model:
+        with StatModel(run_biophysical, key_frame, datas,
+                                mp_locs, model) as stat_model:
             trace = None
             start = None
             if not args.previous_run is None:
                 with open(args.previous_run,'rb') as file:
                     db = pickle.load(file)
                 if args.previous_run_manual:
+                    start = {}
+                    if 'model_param' in db.start:
+                        start_vals = db.start['model_param']
+                        start['model_param'] = np.array([
+                            start_vals[key] for key in key_frame.index])
                     start = db.start
                 else:
                     trace = db.trace
                 del db
-             
+
             trace = pm.sample(draws=5, tune=5, trace=trace, start=start,
                               cores=1, discard_tuned_samples=False)
     
@@ -91,6 +94,7 @@ if __name__ == '__main__':
                 sample_timer.join()
             
         model_db.num_calls = run_biophysical.call_counter
+        model_db.key_frame = key_frame
         model_db.trace = trace
         with open(db_path, 'wb') as file:
             pickle.dump(model_db, file)

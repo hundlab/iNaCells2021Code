@@ -8,17 +8,21 @@ Created on Thu Jun 11 16:10:27 2020
 
 import pymc3 as pm
 import numpy as np
+import pandas as pd
 import theano
 import theano.tensor as tt
 from contextlib import contextmanager
 
+def key_frame(key_groups, exp_parameters):
+    keys_list = [key for keys in key_groups for key in keys]
+    return exp_parameters.loc[keys_list, ['Sim Group', 'temp ( K )']]
 
 
 @contextmanager
-def StatModel(run_biophysical, key_groups, datas, mp_locs, model, temperatures):
+def StatModel(run_biophysical, key_frame, datas, mp_locs, model):
     ## create all sim means and variances per biophys model parameter
     with pm.Model() as model:
-        num_sims = sum(map(len, key_groups))
+        num_sims = len(key_frame)
     
         
         # overall model parameter mean prior ~N
@@ -42,14 +46,9 @@ def StatModel(run_biophysical, key_groups, datas, mp_locs, model, temperatures):
     
 
         # temerature beta
-        temperature_arr = np.empty(num_sims)
-        k = 0
-        for i, keys in enumerate(key_groups):
-            for j, key in enumerate(keys):
-                #temperature adjusted to minimum in group
-                temperature_arr[k] = temperatures[key] -290.15
-                k += 1
-                
+        #temperature adjusted to minimum in group
+        temperature_arr = np.array(key_frame['temp ( K )'], dtype=float) -290.15
+
         #temperature coefficiant ~ N
         mu = np.zeros_like(mp_locs)# update to fit q10 (0.2)
         sigma = 100* np.ones_like(mp_locs) # .1
@@ -72,34 +71,22 @@ def StatModel(run_biophysical, key_groups, datas, mp_locs, model, temperatures):
     
     
         # precision for each protocol ~ Gamma
+        key_groups = list(key_frame['Sim Group'].unique())
         alpha = 0.001* np.ones(len(key_groups))
         beta = 0.001* np.ones(len(key_groups))
         error_sigma = pm.Gamma("error_sigma",
                                   alpha = alpha,
                                   beta = beta,
                                   shape = alpha.shape)
-        keys_list = []
         error_tau_index = []
         data_array = []
-    #    biophys_liks = []
-    #    biophys_results = []
-        k = 0
-        for i, keys in enumerate(key_groups):
-            for j, key in enumerate(keys):
-                exp_data = list(datas[key][:,1])
-                data_array += exp_data
-#                data_array.append(datas[key][:,1])
-                
-    #            identif = "__{key[0]}__{key[1]}__gr{}".format(i, key=key)
-            
-    
-    #            model_param_sim.append(model_param)
-    #            biophys_liks.append(biophys_lik)
-    #            biophys_results.append(biophys_result)
-                keys_list.append(key)
-                error_tau_index += [i]*len(exp_data)
-#                error_tau_index.append(i)
-                k += 1
+        for key in key_frame.index:
+            exp_data = list(datas[key][:,1])
+            data_array += exp_data
+
+            group_num = key_groups.index(key_frame.loc[key, 'Sim Group'])
+            error_tau_index += [group_num]*len(exp_data)
+
         error_tau_index = np.array(error_tau_index)
         data_array = np.array(data_array)
     
@@ -109,7 +96,7 @@ def StatModel(run_biophysical, key_groups, datas, mp_locs, model, temperatures):
             
             def perform(self, node, inputs, outputs):
                 model_param_sim, = inputs
-                outputs[0][0] = run_biophysical(model_param_sim, keys_list)
+                outputs[0][0] = run_biophysical(model_param_sim, list(key_frame.index))
                 
         tt_biophysical_model = BiophysicalModel()
     
