@@ -103,18 +103,29 @@ if run_fits['Inactivation']:
 #                ('21647304_3',	'Dataset B Adults'), ('21647304_3',	'Dataset B Pediatrics')]
     keys_all.append(keys_iin)
 
+#     setupSimExp(sim_fs=sim_fs,\
+#                 datas=datas,\
+#                 data=data,\
+#                 exp_parameters=exp_parameters,
+#                 keys_iin=keys_iin,\
+#                 model=model,\
+#                 process=None, #to be set by normalizToBaseline
+#                 dt=dt,\
+# #                post_process=normalizeToBaseline,
+#                 setup_sim_args={'sim_args':{'solver': solver}})
+#     for key in keys_iin:
+#         sim_fs[key] = normalizeToBaseline(sim_f=sim_fs[key])
     setupSimExp(sim_fs=sim_fs,\
                 datas=datas,\
                 data=data,\
                 exp_parameters=exp_parameters,
                 keys_iin=keys_iin,\
                 model=model,\
-                process=None, #to be set by normalizToBaseline
+                process=partial(peakCurr, durn=3),
                 dt=dt,\
-#                post_process=normalizeToBaseline,
+                post_process=normalizeToFirst,
+                process_data=normalizeToFirst_data,
                 setup_sim_args={'sim_args':{'solver': solver}})
-    for key in keys_iin:
-        sim_fs[key] = normalizeToBaseline(sim_f=sim_fs[key])
     
 
     # inactivation normalized to first

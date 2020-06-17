@@ -9,6 +9,7 @@ Created on Mon Jun  1 13:46:28 2020
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
+from collections import deque
 
 from . import run_sims_functions
 from .run_sims_functions import isList
@@ -131,11 +132,13 @@ class SimRunner():
         self.dt = dt
         self.solver = solver
         self.retOptions = retOptions
+        
         self.out = []
         self.pooled = False
         self.exception = None
         
     def run_sim(self, model_parameters, pool=None):
+        self.exception = None
         self.out = []
         self.pool = not pool is None
 
@@ -218,36 +221,67 @@ class SimResults():
         self.calc_fn = calc_fn
         self.sim_funcs = sim_funcs
         self.keywords = kwargs
-#        self.cache = {}
+        self.cache_len = 3
+        # [key][i < cache_len] = (params, results)
+        self.cache = {}
         self.call_counter = 0
     def __call__(self, model_parameters_list, keys, flatten=True):
         model_parameters_dict = {key: np.array(model_parameters, dtype=float) 
                                  for key, model_parameters in 
                                  zip(keys,model_parameters_list)}
-#        if not self.cache_args is None:
-#            print(np.abs(self.cache_args- model_parameters))
+        misses, results = self.lookup_cache(model_parameters_dict)
+
         model_params_to_run = {}
         simfs_to_run = {}
-        for key, model_parameters in model_parameters_dict.items():
-            model_params_to_run[key] = model_parameters
+        for key in misses:
+            model_params_to_run[key] = model_parameters_dict[key]
             simfs_to_run[key] = self.sim_funcs[key]
 #            prev_cache = np.array([np.array(mps) for c_key, mps in self.cache if c_key == key])
             
-        new_cache = self.calc_fn(model_params_to_run,
+        new_results = self.calc_fn(model_params_to_run,
                                       sim_funcs=simfs_to_run,
                                       **self.keywords)
+        
+        self.update_cache(model_parameters_dict, new_results)
 
         self.call_counter += 1
-        print("Num calls: ", self.call_counter)
+        print("Num calls: ", self.call_counter, "Num Run: ", len(new_results))
 
+        results.update(new_results)
         res = []
         for key in keys:
             if flatten:
-                res += list(new_cache[key])
+                res += list(results[key])
             else:
-                res.append(new_cache[key])
+                res.append(results[key])
         res = np.array(res)
         return res
+    
+    def update_cache(self, model_parameters, results):
+        for key, res in results.items():
+            if not key in self.cache:
+                self.cache[key] = deque(maxlen=self.cache_len)
+            self.cache[key].append((model_parameters[key], res))
+            
+    def lookup_cache(self, model_parameters):
+        misses = []
+        results = {}
+        for key, model_p_new in model_parameters.items():
+            if not key in self.cache:
+                misses.append(key)
+            else:
+                cached = self.cache[key]
+                found = False
+                for model_p_cache, res_cache in cached:
+                    if np.array_equal(model_p_new, model_p_cache):
+                        results[key] = res_cache
+                        found = True
+                        break
+                if not found:
+                    misses.append(key)
+        return misses, results
+            
+            
 
 #sim_funcs is now a dict (pmid_fig, name) -> sim_func
 def calc_results(model_parameters_part, model_parameters_full, sim_funcs,\
@@ -273,6 +307,8 @@ def calc_results(model_parameters_part, model_parameters_full, sim_funcs,\
             if vals_sim is None:
                 raise ValueError("sims_iter returned none")
         except Exception as e:
+            import pdb
+            pdb.set_trace()
             print(e)
 #            raise e
             sub_dat = data[key]

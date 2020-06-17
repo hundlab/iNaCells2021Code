@@ -47,7 +47,7 @@ def normalizeToBaseline(sim_f, baseline_locs=[0,3]):
     sim_f_baseline.durs = durs
     sim_f_baseline.voltages = voltages
     sim_f_baseline.process = peakCurr
-    
+
     @wraps(sim_f.run_sim)
     def run_sim(self, model_parameters, pool=None):
         try:
@@ -57,7 +57,7 @@ def normalizeToBaseline(sim_f, baseline_locs=[0,3]):
             process = partial(normalized2val, durn=3, val=baseline)
             self.process = process
             run_sim_base(model_parameters, pool=pool)
-        except Exception as e: 
+        except Exception as e:
             self.exception = e
     sim_f.run_sim = types.MethodType(run_sim, sim_f)
     return sim_f
