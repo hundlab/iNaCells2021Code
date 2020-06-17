@@ -28,9 +28,6 @@ from atrial_model.iNa.define_sims import sim_fs, datas, keys_all, exp_parameters
 from atrial_model.iNa.stat_model_3 import StatModel, key_frame
 from atrial_model.iNa.model_setup import model_params_initial, mp_locs, sub_mps, model
 
-class ObjContainer():
-    pass
-
 def stop_sim(pymc_model):
     raise KeyboardInterrupt
     print("Sampling Canceled")
@@ -49,11 +46,11 @@ if __name__ == '__main__':
     model_name += '.pickle'
     db_path = args.out_dir+'/'+model_name
     
-    model_db = ObjContainer()
-    model_db.model_params_initial = model_params_initial
-    model_db.mp_locs = mp_locs
-    model_db.param_bounds = model.param_bounds
-    model_db.bio_model_name = args.model_name
+    model_db = {}
+    model_db['model_params_initial'] = model_params_initial
+    model_db['mp_locs'] = mp_locs
+    model_db['param_bounds'] = model.param_bounds
+    model_db['bio_model_name'] = args.model_name
 
     print("Running Pool with", os.cpu_count(), "processes")
     with Pool() as proc_pool:
@@ -69,17 +66,19 @@ if __name__ == '__main__':
             trace = None
             start = None
             if not args.previous_run is None:
+                model_db['previous'] = {}
+                model_db['previous']['file'] = args.previous_run
+                model_db['previous']['is_trace'] = not args.previous_run_manual
                 with open(args.previous_run,'rb') as file:
                     db = pickle.load(file)
                 if args.previous_run_manual:
                     start = {}
-                    if 'model_param' in db.start:
-                        start_vals = db.start['model_param']
+                    if 'model_param' in db['start']:
+                        start_vals = db['start']['model_param']
                         start['model_param'] = np.array([
                             start_vals[key] for key in key_frame.index])
-                    start = db.start
                 else:
-                    trace = db.trace
+                    trace = db['trace']
                 del db
 
             trace = pm.sample(draws=5, tune=5, trace=trace, start=start,
@@ -93,9 +92,9 @@ if __name__ == '__main__':
             if not args.max_time is None:
                 sample_timer.join()
             
-        model_db.num_calls = run_biophysical.call_counter
-        model_db.key_frame = key_frame
-        model_db.trace = trace
+        model_db['num_calls'] = run_biophysical.call_counter
+        model_db['key_frame'] = key_frame
+        model_db['trace'] = trace
         with open(db_path, 'wb') as file:
             pickle.dump(model_db, file)
             
