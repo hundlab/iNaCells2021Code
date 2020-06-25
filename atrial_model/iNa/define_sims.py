@@ -198,7 +198,7 @@ if run_fits['Inactivation']:
                                   'dt' : dt,
                                   'process' : process,
                                   'post_process' : partial(func_norm, 
-                                                            func=lambda vals: np.log(resort(vals)))}} 
+                                                            func=lambda vals: np.log(resort(vals)))}}
     for keyf, keys in zip(keysf_iin, keyss_iin):
         key_dataf = func_norm_data(data[keyf], np.log)
         key_datas = func_norm_data(data[keys], np.log)

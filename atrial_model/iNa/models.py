@@ -517,7 +517,7 @@ class OHaraRudy_wMark_INa(SodiumChannelModel):
         _, _, a, b = self.calc_constants(vOld)
         
         #m
-        d_vals[0] = -b[0]#-1 / tau.tm
+        d_vals[0] = -a[0]-b[0]#-1 / tau.tm
 
         #hf jf if i2f
         d_vals[1] = -b[1]

@@ -53,10 +53,10 @@ class ModelWrapper():
         vOld = self.flat_voltages[loc]
         return vOld
     def __call__(self, t, vals):
-        if self.call_count > 50000 and self.call_count/t > 40:
+        if self.call_count > 100000 and self.call_count/t > 80:
             print("Error too many calls", self.call_count/t, self.call_count)
             self.call_count = 1
-            #raise ValueError
+            raise ValueError
         self.call_count += 1
         vOld = self.getvOld(t)
         ddt_vals =  self.run_model.ddtcalc(vals, vOld)
@@ -121,6 +121,17 @@ def solveAndProcesses(durs, voltages, run_model, solver, dt, process, sub_sim_po
     return np.array(processed)
 
 class SimRunner():
+    class SimRes():
+        def __init__(self, parent, pooled=False):
+            self.parent = parent
+            
+            self.out = []
+            self.pooled = pooled
+            self.exception = None
+            
+        def get_output(self):
+            return self.parent.get_output(self)
+            
     def __init__(self, model, voltages, durs, sim_param, process, post_process,
             dt=0.005, solver=None, retOptions=None):
         self.model = model
@@ -133,14 +144,8 @@ class SimRunner():
         self.solver = solver
         self.retOptions = retOptions
         
-        self.out = []
-        self.pooled = False
-        self.exception = None
-        
     def run_sim(self, model_parameters, pool=None):
-        self.exception = None
-        self.out = []
-        self.pool = not pool is None
+        res = self.SimRes(self, pooled=not pool is None)
 
         model_args = list(model_parameters)
         model_kwargs = dict(TEMP=self.sim_param['TEMP'],
@@ -159,18 +164,19 @@ class SimRunner():
                     processed = pool.apply_async(solveAndProcesses, solveAProc_args)
                 else:
                     processed = solveAndProcesses(*solveAProc_args)
-                self.out.append(processed)
+                res.out.append(processed)
 
         except Exception as e:
-            self.exception = e
-            return
-    
-    def get_output(self):
-        if not self.exception is None:
-            raise self.exception
-        out = self.out
+            res.exception = e
         
-        if self.pool:
+        return res
+    
+    def get_output(self, res):
+        if not res.exception is None:
+            raise res.exception
+        out = res.out
+        
+        if res.pooled:
             out2 = []
             for processed in out:
                 out2.append(processed.get())
@@ -221,7 +227,7 @@ class SimResults():
         self.calc_fn = calc_fn
         self.sim_funcs = sim_funcs
         self.keywords = kwargs
-        self.cache_len = 3
+        self.cache_len = 5
         # [key][i < cache_len] = (params, results)
         self.cache = {}
         self.call_counter = 0
@@ -246,6 +252,8 @@ class SimResults():
 
         self.call_counter += 1
         print("Num calls: ", self.call_counter, "Num Run: ", len(new_results))
+        if len(new_results) == 1:
+            print(list(new_results.keys()))
 
         results.update(new_results)
         res = []
@@ -267,9 +275,7 @@ class SimResults():
         misses = []
         results = {}
         for key, model_p_new in model_parameters.items():
-            if not key in self.cache:
-                misses.append(key)
-            else:
+            try:
                 cached = self.cache[key]
                 found = False
                 for model_p_cache, res_cache in cached:
@@ -279,9 +285,10 @@ class SimResults():
                         break
                 if not found:
                     misses.append(key)
+            except KeyError:
+                misses.append(key)
+                
         return misses, results
-            
-            
 
 #sim_funcs is now a dict (pmid_fig, name) -> sim_func
 def calc_results(model_parameters_part, model_parameters_full, sim_funcs,\
@@ -291,24 +298,21 @@ def calc_results(model_parameters_part, model_parameters_full, sim_funcs,\
         mp_locs = np.ones_like(model_parameters_full, dtype=bool)
     
     vals_sims = {}
-    sims_iters = {}
+    sims_res = {}
     for key, sim_func in sim_funcs.items():
 #        print(key)
         if isinstance(model_parameters_part, dict):
             model_parameters_full[mp_locs] = model_parameters_part[key]
         else:
             model_parameters_full[mp_locs] = model_parameters_part
-        sim_func.run_sim(model_parameters_full, pool=pool)
-        sims_iters[key] = sim_func
-    for key, sim_func in sim_funcs.items():
+        sims_res[key] = sim_func.run_sim(model_parameters_full, pool=pool)
+    for key, sim_res in sims_res.items():
         try:
-            vals_sim = sim_func.get_output()
+            vals_sim = sim_res.get_output()
             vals_sims[key] = vals_sim
             if vals_sim is None:
-                raise ValueError("sims_iter returned none")
+                raise ValueError("simulation returned none")
         except Exception as e:
-            import pdb
-            pdb.set_trace()
             print(e)
 #            raise e
             sub_dat = data[key]
@@ -332,7 +336,7 @@ def calc_diff(model_parameters_part, model_parameters_full, sim_func,\
     
 #    with np.printoptions(precision=3):
 #        print(model_parameters_part)
-#        print(0.5*np.sum(error**2))
+    print(0.5*np.sum(np.square(error)))
     if not results is None:
         results.append((error,model_parameters_part))
     if run_sims_functions.plot2:
