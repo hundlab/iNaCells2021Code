@@ -45,7 +45,7 @@ def make_model(run_biophysical, key_groups, datas, model_params_initial, mp_locs
                 #temperature adjusted to minimum in group
                 temperature_arr[k] = temperatures[key] -290.15
                 k += 1
-                
+        
         #temperature coefficiant ~ N
         mu = np.zeros_like(mp_locs)# update to fit q10 (0.2)
         tau = 0.001* np.ones_like(mp_locs) # .1
@@ -57,6 +57,8 @@ def make_model(run_biophysical, key_groups, datas, model_params_initial, mp_locs
         #linear mean
         model_param_index = np.arange(start=0,stop=len(mp_locs),step=1,dtype=int)
         model_param_index = np.tile(model_param_index, (num_sims,1))
+        temperature_arr = np.broadcast_to(temperature_arr[...,None], shape=model_param_index.shape)
+        temperature_arr[:,0] = 0
         mu = model_param_mean[model_param_index] + b_temp[model_param_index]*temperature_arr[...,None]
 
         # model parameter  ~ N
