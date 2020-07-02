@@ -501,7 +501,7 @@ class OHaraRudy_wMark_INa(SodiumChannelModel):
         b[3] = (1-ss.jss)/tau.tj
         
         a[4] = ss.jss/(tau.tj*self.tj2_mult)
-        b[4] = (1-ss.jss)/(tau.tj*10)
+        b[4] = (1-ss.jss)/(tau.tj*self.tj2_mult)
         
 
 #        tau.__dict__ = {key: min(max(value, 1e-8), 1e20) for key,value in tau.__dict__.items()}
