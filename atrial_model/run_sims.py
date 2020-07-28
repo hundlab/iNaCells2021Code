@@ -223,7 +223,7 @@ class SimRunner():
 
 
 class SimResults():
-    def __init__(self, calc_fn, sim_funcs, **kwargs):
+    def __init__(self, calc_fn, sim_funcs, disp_print=True, **kwargs):
         self.calc_fn = calc_fn
         self.sim_funcs = sim_funcs
         self.keywords = kwargs
@@ -231,6 +231,7 @@ class SimResults():
         # [key][i < cache_len] = (params, results)
         self.cache = {}
         self.call_counter = 0
+        self.disp_print = disp_print
     def __call__(self, model_parameters_list, keys, flatten=True):
         model_parameters_dict = {key: np.array(model_parameters, dtype=float) 
                                  for key, model_parameters in 
@@ -251,9 +252,10 @@ class SimResults():
         self.update_cache(model_parameters_dict, new_results)
 
         self.call_counter += 1
-        print("Num calls: ", self.call_counter, "Num Run: ", len(new_results))
-        if len(new_results) == 1:
-            print(list(new_results.keys()))
+        if self.disp_print:
+            print("Num calls: ", self.call_counter, "Num Run: ", len(new_results))
+            if len(new_results) == 1:
+                print(list(new_results.keys()))
 
         results.update(new_results)
         res = []
@@ -321,7 +323,8 @@ def calc_results(model_parameters_part, model_parameters_full, sim_funcs,\
 
 def calc_diff(model_parameters_part, model_parameters_full, sim_func,\
                        data, mp_locs=None, ssq=False, pool=None,\
-                       exp_params=None, keys=None, results=None,error_fill=np.inf):
+                       exp_params=None, keys=None, results=None,error_fill=np.inf,\
+                       prnt_err=True):
     
     vals_sims = calc_results(model_parameters_part, model_parameters_full, sim_func,\
                        data, mp_locs=mp_locs, pool=pool,\
@@ -336,7 +339,8 @@ def calc_diff(model_parameters_part, model_parameters_full, sim_func,\
     
 #    with np.printoptions(precision=3):
 #        print(model_parameters_part)
-    print(0.5*np.sum(np.square(error)))
+    if prnt_err:
+        print(0.5*np.sum(np.square(error)))
     if not results is None:
         results.append((error,model_parameters_part))
     if run_sims_functions.plot2:

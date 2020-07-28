@@ -58,8 +58,8 @@ def make_model(run_biophysical, key_groups, datas, model_params_initial, mp_locs
         model_param_index = np.arange(start=0,stop=len(mp_locs),step=1,dtype=int)
         model_param_index = np.tile(model_param_index, (num_sims,1))
         temperature_arr = np.broadcast_to(temperature_arr[...,None], shape=model_param_index.shape)
-        temperature_arr[:,0] = 0
-        mu = model_param_mean[model_param_index] + b_temp[model_param_index]*temperature_arr[...,None]
+        #temperature_arr[:,0] = 0
+        mu = model_param_mean[model_param_index] + b_temp[model_param_index]*temperature_arr
 
         # model parameter  ~ N
         model_param_sim =  pymc.Normal("model_param",

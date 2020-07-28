@@ -28,7 +28,7 @@ except NameError:
 
 mp_locs = []
 
-if args.model_name == "OHara":
+if args.model_name == "OHara" or args.model_name == "OHaraRudy_INa":
     model = OHaraRudy_INa#models.iNa.OharaRudy_INa#OHaraRudy_INa
     retOptions  = model().retOptions
     dt = 0.05

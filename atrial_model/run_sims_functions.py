@@ -25,6 +25,9 @@ def isList(thing):
 
 def plotEach(times, current, **kwargs):
     plt.plot(times, current)
+    
+def timeAndVoltage(times, current, **kwargs):
+    return times, current
 
 def peakCurr(times, current, sub_sim_pos, durs, durn=None, **kwargs):
     flat_durs = durs[sub_sim_pos,:]
@@ -78,6 +81,25 @@ def lstsq_wrap(fun, x0, bounds=None, **kwargs):
     except ValueError:
         return optimize.OptimizeResult(x=x0, success=False, status=-1, fun=np.inf)
 
+
+def getNormalizedCurrentSection(times, current, sub_sim_pos, durs, calc_dur = 1, **kwargs):
+    flat_durs = durs[sub_sim_pos,:]
+    startt = np.sum(flat_durs[:calc_dur])
+    stopt  = startt + flat_durs[calc_dur]
+    stimMask = (startt <= times) & (times <= stopt)
+    
+    times_sub = times[stimMask]
+    currents_sub = current[stimMask]
+    times_normed = times_sub - times_sub[0]
+    min_abs_loc = np.argmin(np.abs(currents_sub))
+    min_curr = currents_sub[min_abs_loc]
+    currents_normed = currents_sub - min_curr
+    max_abs_loc = np.argmax(np.abs(currents_normed))
+    currents_normed = currents_normed/currents_normed[max_abs_loc]
+    currents_normed *= -np.sign(currents_normed[max_abs_loc])
+    
+    return currents_normed
+    
 
 def calcExpTauInact(times, current, func, x0, sub_sim_pos, durs, calc_dur = 1, keep=None, bounds=(-np.inf, np.inf), **kwargs):
     if keep is None:

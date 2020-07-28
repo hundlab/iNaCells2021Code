@@ -352,7 +352,7 @@ class OHaraRudy_INa(SodiumChannelModel):
 
 
 class OHaraRudy_wMark_INa(SodiumChannelModel):
-    num_params = 24
+    num_params = 25
     param_bounds = [(-3,3),
 
                    (-3,3),
@@ -361,14 +361,16 @@ class OHaraRudy_wMark_INa(SodiumChannelModel):
                    (-3,3), (-1,3),
                    (-15,15), (-1,3),
                    
-                   (-1,3), (-15,15), (-15,15),
-                   (-3,3), (-15,15), (-1,3),
-                   (-3,3), (-15,15), (-1,3),
+                   (-1,3), (-15,15),# (-15,15),
+                   (-3,3), (-15,15), 
+                   (-1,3), (-3,3),
+                   (-3,3), (-15,15), 
+                   (-1,3), (-1,3),
                    (-5,5),
                    
                    (-1,3), (-15,15),
-                   (-3,3), (-15,15), (-1,3),
-                   (-3,3)
+                   (-3,3), (-15,15),
+                   (-1,3), (-1,3),
                    ]
 
     def __init__(self, GNaFactor=0,
@@ -379,24 +381,25 @@ class OHaraRudy_wMark_INa(SodiumChannelModel):
                  tm_maxFactor=0, tm_tau1Factor=0,
                  tm_shiftFactor=0, tm_tau2Factor=0,
                  
-                 hss_tauFactor=0, hss_shiftFactor=0, hsss_shiftFactor=0,
-                 thf_maxFactor=0, thf_shiftFactor=0, thf_tauFactor=0,
-                 ths_maxFactor=0, ths_shiftFactor=0, ths_tauFactor=0,
+                 hss_tauFactor=0, hss_shiftFactor=0,
+                 thf_maxFactor=0, thf_shiftFactor=0,
+                 thf_tau1Factor=0, thf_tau2Factor=0,
+                 ths_maxFactor=0, ths_shiftFactor=0, 
+                 ths_tau1Factor=0, ths_tau2Factor=0,
                  Ahf_multFactor=0,
 
                  jss_tauFactor=0, jss_shiftFactor=0,
-                 tj_maxFactor=0, tj_shiftFactor=0, tj_tauFactor=0,
-                 tj2_multFactor=0,
+                 tj_maxFactor=0, tj_shiftFactor=0, 
+                 tj_tau2Factor=0, tj_tau1Factor=0,
                  
                  TEMP = 310.0, naO = 140.0, naI = 7):
-
         # scaling currents 0 
         self.GNa = np.exp(GNaFactor);
 
-        #fastest tau 2
+        #fastest tau 1
         self.baseline = 2.038*np.exp(baselineFactor)
 
-        #m gate 3
+        #m gate 2
         self.mss_tau = 9.871*np.exp(mss_tauFactor)
         self.mss_shift = 51.57+mss_shiftFactor
 
@@ -409,32 +412,46 @@ class OHaraRudy_wMark_INa(SodiumChannelModel):
         self.tm_shift -= tm_cshift #shift correction
         self.tm_max *= tm_cmax #height correction
 
-        #h gate 9
+        #h gate 8
         self.hss_tau = 14.086*np.exp(hss_tauFactor)
-        self.hfss_shift = -87.90+hss_shiftFactor
-        self.hsss_shift = -87.90*np.exp(hsss_shiftFactor)
+        self.hfss_shift = -56+hss_shiftFactor
+        #self.hsss_shift = -87.90+hss_shiftFactor#np.exp(hsss_shiftFactor)
 
-        self.thf_max = 30*np.exp(thf_maxFactor)
-        self.thf_shift = -78+thf_shiftFactor
-        self.thf_tau = 15*np.exp(thf_tauFactor)
+        self.thf_max = 5*np.exp(thf_maxFactor)
+        self.thf_tau1 = 6.285*np.exp(thf_tau1Factor)
+        self.thf_shift = -57.639999999606744+thf_shiftFactor
+        self.thf_tau2 = 15*np.exp(thf_tau2Factor)
+        thf_cshift = np.log(self.thf_tau2/self.thf_tau1)/(1/self.thf_tau2+1/self.thf_tau1)
+        thf_cmax = np.exp(thf_cshift/self.thf_tau2) + np.exp(-thf_cshift/self.thf_tau1)
+        self.thf_shift -= thf_cshift
+        self.thf_max *= thf_cmax
         
-        self.ths_max = 50*np.exp(ths_maxFactor)
-        self.ths_shift = -75+ths_shiftFactor
-        self.ths_tau = 40*np.exp(ths_tauFactor)
+        self.ths_max = 5.894233734241695*np.exp(ths_maxFactor)
+        self.ths_tau1 = 28.05*np.exp(ths_tau1Factor)
+        self.ths_shift = -66.94699999965118+ths_shiftFactor
+        self.ths_tau2 = 40*np.exp(ths_tau2Factor)
+        ths_cshift = np.log(self.ths_tau2/self.ths_tau1)/(1/self.ths_tau2+1/self.ths_tau1)
+        ths_cmax = np.exp(ths_cshift/self.ths_tau2) + np.exp(-ths_cshift/self.ths_tau1)
+        self.ths_shift -= ths_cshift
+        self.ths_max *= ths_cmax
+        
 
         mixingodds = np.exp(Ahf_multFactor)
         self.Ahf_mult = mixingodds/(mixingodds+1)# np.exp(Ahf_multFactor)
 
-        #j gate 19
-        self.jss_tau = 6.086*np.exp(jss_tauFactor)
-        self.jss_shift = 95+jss_shiftFactor
+        #j gate 18
+        self.jss_tau = 20*np.exp(jss_tauFactor)
+        self.jss_shift = -110+jss_shiftFactor
         
-        self.tj_max = 200*np.exp(tj_maxFactor)
-        self.tj_shift = -95+tj_shiftFactor
-        self.tj_tau = 3*np.exp(tj_tauFactor)
-        
-        self.tj2_mult = 10*(np.exp(tj2_multFactor))
-
+        self.tj_max = 100*np.exp(tj_maxFactor)
+        self.tj_tau2 = 10*np.exp(tj_tau2Factor)
+        self.tj_tau1 = 20*np.exp(tj_tau1Factor)
+        self.tj_shift = -80+tj_shiftFactor
+        tj_cshift = np.log(self.tj_tau1/self.tj_tau2)/(1/self.tj_tau1+1/self.tj_tau2)
+        tj_cmax = np.exp(tj_cshift/self.tj_tau1) + np.exp(-tj_cshift/self.tj_tau2)
+        self.tj_shift -= tj_cshift #shift correction
+        self.tj_max *= tj_cmax #height correction
+                
         super().__init__(TEMP=TEMP, naO=naO, naI=naI,
                          recArrayNames = ["m",
                                        "hf","jf","if","i2f",
@@ -460,7 +477,7 @@ class OHaraRudy_wMark_INa(SodiumChannelModel):
         
         
         ss.mss = 1.0 / (1.0 + np.exp((-(vOld + self.mss_shift)) / self.mss_tau));
-        tau.tm = self.baseline/30+ self.tm_max/(np.exp((vOld-self.tm_shift)/self.tm_tau1) 
+        tau.tm = self.baseline/15+ self.tm_max/(np.exp((vOld-self.tm_shift)/self.tm_tau1) 
                                                 + np.exp(-(vOld-self.tm_shift)/self.tm_tau2))
         #1.0 / (self.tm_mult1 * np.exp((vOld + 11.64) / self.tm_tau1) +
         #                   self.tm_mult2 * np.exp(-(vOld + 77.42) / self.tm_tau2));
@@ -469,7 +486,8 @@ class OHaraRudy_wMark_INa(SodiumChannelModel):
         b[0] = (1-ss.mss)/tau.tm
 
         ss.hfss = 1.0 / (1 + np.exp((vOld - self.hfss_shift) / (self.hss_tau)))
-        tau.thf = self.baseline/5 + (self.thf_max-self.baseline/5) / (1+np.exp((vOld-self.thf_shift)/self.thf_tau))
+        tau.thf = self.baseline/10 + (self.thf_max-self.baseline/5)/(np.exp((vOld-self.thf_shift)/self.thf_tau2) 
+                                                + np.exp(-(vOld-self.thf_shift)/self.thf_tau1))
 
         a[1] = ss.hfss/tau.thf
         b[1] = (1-ss.hfss)/tau.thf
@@ -478,8 +496,10 @@ class OHaraRudy_wMark_INa(SodiumChannelModel):
 #        if vOld < -100:
 #            tau.thf = self.baseline
 #        tau.thf = np.clip(tau.thf, a_max=15, a_min=None)
-        ss.hsss = 1.0 / (1 + np.exp((vOld - self.hsss_shift) / (self.hss_tau)))
-        tau.ths = self.baseline + (self.ths_max-self.baseline) / (1+np.exp((vOld-self.ths_shift)/self.ths_tau))
+        #1.0 / (1 + np.exp((vOld - self.hsss_shift) / (self.hss_tau)))
+        ss.hsss = ss.hfss
+        tau.ths = self.baseline +  (self.ths_max-self.baseline)/(np.exp((vOld-self.ths_shift)/self.ths_tau2) 
+                                                + np.exp(-(vOld-self.ths_shift)/self.ths_tau1))
         
         a[2] = ss.hsss/tau.ths
         b[2] = (1-ss.hsss)/tau.ths
@@ -490,18 +510,21 @@ class OHaraRudy_wMark_INa(SodiumChannelModel):
 #            tau.ths = self.baseline
 #        tau.ths = np.clip(tau.ths, a_max=20, a_min=None)
 
-        ss.jss = 1.0 / (1 + np.exp((vOld + self.jss_shift) / (self.jss_tau)));#hss;
-        tau.tj = self.baseline + (self.tj_max-self.baseline)/(1+np.exp(-1/self.tj_tau*(vOld-self.tj_shift)))
+        ss.jss = 1.0 / (1 + np.exp((vOld - self.jss_shift) / (self.jss_tau)));#hss;
+        tau.tj = self.baseline + (self.tj_max-self.baseline)/(np.exp((vOld-self.tj_shift)/self.tj_tau1) 
+                                                + np.exp(-(vOld-self.tj_shift)/self.tj_tau2))
+        
+        a[3] = ss.jss/tau.tj
+        b[3] = (1-ss.jss)/tau.tj
 #        mask = vOld > -60
 #        tau.tj[mask] = 100 + (self.tj_max-100)/(1+np.exp(2/self.tj_tau*(vOld[mask]-(self.tj_shift+40))))
 #        tau.tj *= 0.001
 #        tau.tj = 0.1
-
-        a[3] = ss.jss/tau.tj
-        b[3] = (1-ss.jss)/tau.tj
+        #ss.jss2 = 1.0 / (1 + np.exp((vOld - self.jss2_shift) / (self.jss_tau)));#hss;
+        #tau.tj2 = self.baseline + (self.tj2_max-self.baseline) / (1+np.exp(-(vOld-self.tj_shift)/self.tj_tau2))
         
-        a[4] = ss.jss/(tau.tj*self.tj2_mult)
-        b[4] = (1-ss.jss)/(tau.tj*self.tj2_mult)
+        a[4] = 0#ss.jss2/(tau.tj2)
+        b[4] = 0#(1-ss.jss2)/(tau.tj2)
         
 
 #        tau.__dict__ = {key: min(max(value, 1e-8), 1e20) for key,value in tau.__dict__.items()}
