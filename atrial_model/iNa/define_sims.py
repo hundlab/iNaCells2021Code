@@ -15,7 +15,7 @@ from ..run_sims import calc_diff
 from ..setup_sim import setup_sim
 from ..setup_sim_functions import setupSimExp, normalizeToBaseline, normalizeToFirst,\
     resort, minNorm_data, minNorm, minMaxNorm, func_norm, func_norm_data, minMaxNorm_data,\
-    normalizeToFirst_data, correctShift_data, inaCurvesFromData
+    normalizeToFirst_data, correctShift_data, inaCurvesFromData, flattenResult
 from .model_setup import model, mp_locs, sub_mps, sub_mp_bounds, dt, run_fits
 #from .fit_current import calcExpTauInact, calcExpTauAct
 
@@ -46,6 +46,9 @@ datas = {}
 keys_all = []
 
 solver = partial(integrate.solve_ivp, method='BDF')
+retOptions = {'G': False, 'INa': True, 'INaL': True,\
+              'Open': True, 'RevPot': True}
+
 
 if run_fits['Recovery']:
 
@@ -66,7 +69,8 @@ if run_fits['Recovery']:
                 process=normalize2prepulse,\
                 dt=dt,\
                 post_process=None,
-                setup_sim_args={'sim_args':{'solver': solver},
+                setup_sim_args={'sim_args':{'solver': solver,
+                                            'retOptions': retOptions},
                                 'hold_dur':50})
 
     # recovery normalized to preprepulse
@@ -89,19 +93,23 @@ if run_fits['Recovery']:
                 process=partial(normalize2prepulse, pulse1=1, pulse2=5),\
                 dt=dt,\
                 post_process=None,
-                setup_sim_args={'sim_args':{'solver': solver}})
+                setup_sim_args={'sim_args':{'solver': solver,
+                                            'retOptions': retOptions}})
 
 
 
 if run_fits['Inactivation']:
 
     # inactivation normalized to no prepulse
-    keys_iin = [('7971163_4', 'Dataset 32ms'), ('7971163_4', 'Dataset 64ms'),\
-                ('7971163_4', 'Dataset 128ms'), ('7971163_4', 'Dataset 256ms'),\
-                ('7971163_4', 'Dataset 512ms'),\
+    
+    # these were removed because the shift is largly infeasable without large
+    # slow inactivating currents which are not seen
+    #('7971163_4', 'Dataset 32ms'), ('7971163_4', 'Dataset 64ms'),\
+    #('7971163_4', 'Dataset 128ms'), ,\
+    keys_iin = [('7971163_4', 'Dataset 512ms'), ('7971163_4', 'Dataset 256ms'),
                 ('8928874_8',	'Dataset C fresh'), ('8928874_8',	'Dataset C day 1'),\
-                ('8928874_8',	'Dataset C day 3'), ('8928874_8',	'Dataset C day 5')]#,
-#                ('21647304_3',	'Dataset B Adults'), ('21647304_3',	'Dataset B Pediatrics')]
+                ('8928874_8',	'Dataset C day 3'), ('8928874_8',	'Dataset C day 5'),
+                ]
     keys_all.append(keys_iin)
 
 #     setupSimExp(sim_fs=sim_fs,\
@@ -126,7 +134,8 @@ if run_fits['Inactivation']:
                 dt=dt,\
                 post_process=normalizeToFirst,
                 process_data=normalizeToFirst_data,
-                setup_sim_args={'sim_args':{'solver': solver}})
+                setup_sim_args={'sim_args':{'solver': solver,
+                                            'retOptions': retOptions}})
     
 
     # inactivation normalized to first
@@ -145,7 +154,8 @@ if run_fits['Inactivation']:
                 dt=dt,\
                 post_process=normalizeToFirst,
                 process_data=normalizeToFirst_data,
-                setup_sim_args={'sim_args':{'solver': solver}})
+                setup_sim_args={'sim_args':{'solver': solver,
+                                            'retOptions': retOptions}})
 
     # idealized current traces
     keys_mfs = [
@@ -171,32 +181,46 @@ if run_fits['Inactivation']:
     keys_all.append([key[0] for key in keys_mfs])
     process = partial(getNormalizedCurrentSection,calc_dur=1)
     setup_sim_args = {'sim_args':{'solver': solver,
-                                  'retOptions': \
-                                          {'G': True, 'INa': True, 'INaL': True,\
-                                            'Open': True, 'RevPot': True},
+                                  'retOptions': retOptions,
                                   'dt' : dt,
                                   'process' : process,
-                                  'post_process' : None}}
+                                  'post_process' : flattenResult}}
     for tau_keys in keys_mfs:
         tau_m_key = tau_keys[0]
         key_exp_p = exp_parameters.loc[tau_m_key]
         voltage_vals = np.round(data[tau_m_key][:,0])
-        for i in range(len(voltage_vals)):
-            sub_key = (tau_m_key[0], tau_m_key[1]+' '+str(voltage_vals[i]))
-            voltages, durs, sim_f = setup_sim(model, voltage_vals[i,None,None], key_exp_p, **setup_sim_args)
+        voltages, durs, sim_f = setup_sim(model, voltage_vals[:,None], key_exp_p, **setup_sim_args)
+                    
+        startt = durs[0][0]
+        endt = sum(durs[0][0:2])
+        times = np.geomspace(startt, endt, num=50, endpoint=False)#np.arange(startt, endt, step=dt)
+        curve_data = inaCurvesFromData(times-times[0], data, tau_keys, fs_prop=0.9)
+        sim_f.solver = copy.deepcopy(sim_f.solver)
+        sim_f.solver.keywords['t_eval'] = times
+        
+#        exp_parameters.loc[tau_m_key,:] = key_exp_p
+        sim_fs[tau_m_key] = sim_f
+        datas[tau_m_key] = np.array([np.tile(times, (len(voltage_vals),))
+                                     , curve_data.flatten()]).T
+#        keys_iin.append(tau_m_key)
+        
             
-            startt = durs[0][0]
-            endt = sum(durs[0][0:2])
-            times = np.arange(startt, endt, step=dt)
-            curve_data = inaCurvesFromData(times-times[0], data, tau_keys, fs_prop=0.9)
-            sim_f.solver = copy.deepcopy(sim_f.solver)
-            sim_f.solver.keywords['t_eval'] = times
+        # for i in range(len(voltage_vals)):
+        #     sub_key = (tau_m_key[0], tau_m_key[1]+' '+str(voltage_vals[i]))
+        #     voltages, durs, sim_f = setup_sim(model, voltage_vals[i,None,None], key_exp_p, **setup_sim_args)
+            
+        #     startt = durs[0][0]
+        #     endt = sum(durs[0][0:2])
+        #     times = np.arange(startt, endt, step=dt)
+        #     curve_data = inaCurvesFromData(times-times[0], data, tau_keys, fs_prop=0.9)
+        #     sim_f.solver = copy.deepcopy(sim_f.solver)
+        #     sim_f.solver.keywords['t_eval'] = times
 
-            exp_parameters.loc[sub_key,:] = key_exp_p
-            sim_fs[sub_key] = sim_f
-            datas[sub_key] = np.array([times, curve_data[i,:]]).T
-            keys_iin.append(sub_key)
-    keys_all.append(keys_iin)
+        #     exp_parameters.loc[sub_key,:] = key_exp_p
+        #     sim_fs[sub_key] = sim_f
+        #     datas[sub_key] = np.array([times, curve_data[i,:]]).T
+        #     keys_iin.append(sub_key)
+#    keys_all.append(keys_iin)
     # #tau inactivation
     # keys_iin = [('8928874_8', 'Dataset E fresh'), ('8928874_8',	'Dataset E day 1'),\
     #             ('8928874_8',	'Dataset E day 3'), ('8928874_8',	'Dataset E day 5')]
@@ -332,7 +356,8 @@ if run_fits['Activation']:
                 dt=dt,\
                 process_data=minNorm_data,#partial(minMaxNorm_data, feature_range=(-1, 0)),\
                 post_process=minNorm,#partial(minMaxNorm, feature_range=(-1, 0)),,
-                setup_sim_args={'sim_args':{'solver': solver}})
+                setup_sim_args={'sim_args':{'solver': solver,
+                                            'retOptions': retOptions}})
 
 
 if run_fits['Tau Act']:

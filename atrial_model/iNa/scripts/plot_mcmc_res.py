@@ -36,31 +36,36 @@ atrial_model.run_sims_functions.plot1 = False #sim
 atrial_model.run_sims_functions.plot2 = False #diff
 atrial_model.run_sims_functions.plot3 = False #tau
 
-burn_till = 5000
-chain = 0
+burn_till = 20000
+chain = 1
 #burn_till = 60000
 
 if __name__ == '__main__':
     class ObjContainer():
         pass
-    filename = 'mcmc_OHaraRudy_wMark_INa_0606_0047'
+    filename = 'mcmc_OHaraRudy_wMark_INa_0702_1656'
+    #filename = 'mcmc_OHaraRudy_wMark_INa_0627_1152'
+    #filename = 'mcmc_OHaraRudy_wMark_INa_0626_0808'
+    #filename = 'mcmc_OHaraRudy_wMark_INa_0606_0047'
     #filename = 'mcmc_Koval_0601_1835'
 #    filename = 'mcmc_OHaraRudy_wMark_INa_0603_1051'
     #filename = 'mcmc_OHara_0528_1805'
 #    filename = 'mcmc_OHaraRudy_wMark_INa_0528_1833'
     #filename = 'mcmc_Koval_0526_1728'
-#    filename = 'mcmc_Koval_0519_1830'
+    #filename = 'mcmc_Koval_0519_1830'
 
-    filepath = atrial_model.fit_data_dir+'/'+filename
-    with open(filepath+'.pickle','rb') as file:
+    base_dir = atrial_model.fit_data_dir+'/'
+    with open(base_dir+'/'+filename+'_metadata.pickle','rb') as file:
+        model_metadata = pickle.load(file)
+    with open(base_dir+model_metadata.trace_pickel_file,'rb') as file:
         db = pickle.load(file)
     if db['_state_']['sampler']['status'] == 'paused':
         current_iter = db['_state_']['sampler']['_current_iter']
+        current_iter -= db['_state_']['sampler']['_burn']
         for key in db.keys():
             if key != '_state_':
                 db[key][chain] = db[key][chain][:current_iter]
-    with open(filepath+'_metadata.pickle','rb') as file:
-        model_metadata = pickle.load(file)
+
     group_names = []
     for key_group in model_metadata.keys_all:
         group_names.append(exp_parameters.loc[key_group[0], 'Sim Group'])
@@ -146,56 +151,64 @@ if __name__ == '__main__':
         
     if plot_sim:
         with Pool() as proc_pool:
-    #        proc_pool = None
-            b_temp = np.median(db['b_temp'][0][burn_till:], axis=0)
-            intercept = np.median(db['model_param_mean'][0][burn_till:], axis=0)
+#            proc_pool = None
+            b_temp = np.median(db['b_temp'][chain][burn_till:], axis=0)
+            for i in range(db['b_temp'][chain].shape[1]):
+                trace = db['b_temp'][chain][burn_till:, i]
+                f_sig = np.sum(trace > 0)/len(trace)
+                if not (f_sig < 0.05 or f_sig > 0.95):
+                    b_temp[i] = 0
+            intercept = np.median(db['model_param_mean'][chain][burn_till:], axis=0)
             num_sims = sum(map(len, model_metadata.keys_all))
             model_params = {}
+            fit_keys = set(key for keys in model_metadata.keys_all for key in keys)
+            defined_keys = set(key for keys in keys_all for key in keys)
+            good_keys = fit_keys.intersection(defined_keys)#{('7971163_6', 'Dataset -75')}#
+            sim_fs_good = {key: sim_f for key, sim_f in sim_fs.items() if key in good_keys}
             k = 0
-            for i, keys in enumerate(model_metadata.keys_all):
-                for j, key in enumerate(keys):
+            for key_group in model_metadata.keys_all:
+                for key in key_group:
                     #temperature adjusted to minimum in group
                     temperature = exp_parameters.loc[key, 'temp ( K )'] -290.15
                     b_temp_eff = b_temp * temperature
                     sub_mps = intercept + b_temp_eff
                     model_params[key] = sub_mps
                     k += 1
+            model_params = {key: mp for key, mp in model_params.items() if key in good_keys}
     
-            res_overall = calc_results(model_params, sim_funcs=sim_fs,\
+            res_overall = calc_results(model_params, sim_funcs=sim_fs_good,\
                                       model_parameters_full=model_params_initial,\
                             mp_locs=mp_locs, data=datas,error_fill=0,\
                             pool=proc_pool)
                 
-            model_param_mean = np.mean(db['model_param'][0], axis=0)
+            model_param_mean = np.median(db['model_param'][chain], axis=0)
             model_param_sim_mean = {}
             k = 0
             for key_group in model_metadata.keys_all:
                 for key in key_group:
                     model_param_sim_mean[key] = model_param_mean[k]
                     k += 1
-            res_indiv = calc_results(model_param_sim_mean, sim_funcs=sim_fs,\
+            model_param_sim_mean = {key: mp for key, mp in model_param_sim_mean.items() if key in good_keys}
+            res_indiv = calc_results(model_param_sim_mean, sim_funcs=sim_fs_good,\
                                       model_parameters_full=model_params_initial,\
                             mp_locs=mp_locs, data=datas,error_fill=0,\
                             pool=proc_pool)
         
-        for key_group in keys_all:
-            for key in key_group:
-                figname = exp_parameters.loc[key, 'Sim Group']
-                figname = figname if not pd.isna(figname) else 'Missing Label'
-                plt.figure(figname + " overall fit")
-                plt.plot(datas[key][:,0], res_overall[key], label=key)
-                plt.scatter(datas[key][:,0], datas[key][:,1])
-                plt.legend()
+        for key in good_keys:
+            figname = exp_parameters.loc[key, 'Sim Group']
+            figname = figname if not pd.isna(figname) else 'Missing Label'
+            plt.figure(figname + " overall fit")
+            plt.plot(datas[key][:,0], res_overall[key], label=key)
+            plt.scatter(datas[key][:,0], datas[key][:,1])
+            plt.legend()
                 
-        for key_group in keys_all:
-            for key in key_group:
-                figname = exp_parameters.loc[key, 'Sim Group']
-                figname = figname if not pd.isna(figname) else 'Missing Label'
-                plt.figure(figname + " individual fit")
-                plt.plot(datas[key][:,0], res_indiv[key], label=key)
-                plt.scatter(datas[key][:,0], datas[key][:,1])
-                plt.legend()
-    
+        for key in good_keys:
+            figname = exp_parameters.loc[key, 'Sim Group']
+            figname = figname if not pd.isna(figname) else 'Missing Label'
+            plt.figure(figname + " individual fit")
+            plt.plot(datas[key][:,0], res_indiv[key], label=key)
+            plt.scatter(datas[key][:,0], datas[key][:,1])
+            plt.legend()
     
     if plot_pymc_diag:
         try:

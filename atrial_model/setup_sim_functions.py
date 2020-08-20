@@ -145,6 +145,10 @@ def minNorm(vals, **kwargs):
 #    normed = np.cbrt(normed)
     return normed
 
+def flattenResult(vals, **kwargs):
+    return vals.flatten()
+
+
 def minNorm_data(data, **kwargs):
     data = np.copy(data)
     normed = data[:,1]
@@ -168,6 +172,7 @@ def correctShift_data(data, key, exp_parameters, model, **kwargs):
     # plt.scatter(data[:,0], data[:,1])
     # plt.plot(data[peak_loc+1:,0], data[peak_loc+1:,0]*res.slope+res.intercept)
     # plt.plot(data[peak_loc+1:,0], data[peak_loc+1:,0]*res.slope-thr_ena)
+    # print(-thr_ena - act_ena)
     
     shift = -thr_ena - act_ena
     data[:,0] -= shift

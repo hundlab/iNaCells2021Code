@@ -5,18 +5,18 @@ Created on Mon May 18 16:12:17 2020
 
 @author: grat05
 """
-
-#from iNa_models import Koval_ina, OHaraRudy_INa
-from iNa_models_ode import OHaraRudy_INa, Koval_ina
-from scripts import load_data_parameters, all_data
-from iNa_fit_functions import normalize2prepulse, setup_sim, \
-calc_diff, peakCurr, normalized2val, calcExpTauInact, monoExp, biExp,\
+from ..data_loader import load_data_parameters, all_data
+from ..run_sims_functions import normalize2prepulse, \
+peakCurr, normalized2val, calcExpTauInact, monoExp, biExp,\
 calcExpTauAct, biExp_params, monoExp_params, integrateDur, medianValFromEnd,\
 multipleProcess
-from setup_sim_functions import setupSimExp, normalizeToBaseline, normalizeToFirst,\
+from atrial_model.parse_cmd_args import args
+from ..run_sims import calc_diff
+from ..setup_sim import setup_sim
+from ..setup_sim_functions import setupSimExp, normalizeToBaseline, normalizeToFirst,\
     resort, minNorm_data, minNorm, minMaxNorm, func_norm, func_norm_data, minMaxNorm_data,\
     normalizeToFirst_data
-from iNa_model_setup import model, mp_locs, sub_mps, sub_mp_bounds, dt, run_fits
+from .model_setup import model, mp_locs, sub_mps, sub_mp_bounds, dt, run_fits
 
 
 import numpy as np
@@ -24,6 +24,7 @@ from scipy import optimize
 from functools import partial
 from multiprocessing import Pool
 from scipy import integrate
+
 
 
 #import sys

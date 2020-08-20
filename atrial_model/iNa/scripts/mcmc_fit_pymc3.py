@@ -11,7 +11,7 @@ import datetime
 import numpy as np
 import pickle
 from threading import Timer
-from multiprocessing import Pool
+from multiprocessing import Manager
 from functools import partial
 import os
 
@@ -51,46 +51,66 @@ if __name__ == '__main__':
     model_db['mp_locs'] = mp_locs
     model_db['param_bounds'] = model.param_bounds
     model_db['bio_model_name'] = args.model_name
-
-    print("Running Pool with", os.cpu_count(), "processes")
-    with Pool() as proc_pool:
-
-        calc_fn = partial(calc_results, model_parameters_full=model_params_initial,\
-                        mp_locs=mp_locs, data=datas,error_fill=0,\
-                        pool=proc_pool)
-        run_biophysical = SimResults(calc_fn=calc_fn, sim_funcs=sim_fs)
-        key_frame = key_frame(keys_all, exp_parameters)
-        
-        with StatModel(run_biophysical, key_frame, datas,
-                                mp_locs, model) as stat_model:
-            trace = None
-            start = None
-            if not args.previous_run is None:
-                model_db['previous'] = {}
-                model_db['previous']['file'] = args.previous_run
-                model_db['previous']['is_trace'] = not args.previous_run_manual
-                with open(args.previous_run,'rb') as file:
-                    db = pickle.load(file)
-                if args.previous_run_manual:
-                    start = {}
-                    if 'model_param' in db['start']:
-                        start_vals = db['start']['model_param']
-                        start['model_param'] = np.array([
-                            start_vals[key] for key in key_frame.index])
-                else:
-                    trace = db['trace']
-                del db
-
-            trace = pm.sample(draws=5, tune=5, trace=trace, start=start,
-                              cores=1, discard_tuned_samples=False)
     
-            if not args.max_time is None:
-                #max_time is in hours
-                sample_timer = Timer(args.max_time*60*60, stop_sim, args=(stat_model,))
-                sample_timer.start()
-                
-            if not args.max_time is None:
-                sample_timer.join()
+
+    with Manager() as manager:
+#    print("Running Pool with", os.cpu_count(), "processes")
+        with manager.Pool() as proc_pool:
+    #        proc_pool = None
+            
+            calc_fn = partial(calc_results, model_parameters_full=model_params_initial,\
+                            mp_locs=mp_locs, data=datas,error_fill=0,\
+                            pool=proc_pool)
+            run_biophysical = SimResults(calc_fn=calc_fn, sim_funcs=sim_fs)
+            key_frame = key_frame(keys_all, exp_parameters)
+            
+            with StatModel(run_biophysical, key_frame, datas,
+                                    mp_locs, model) as stat_model:
+                trace = None
+                start = None
+                if not args.previous_run is None:
+                    model_db['previous'] = {}
+                    model_db['previous']['file'] = args.previous_run
+                    model_db['previous']['is_trace'] = not args.previous_run_manual
+                    with open(args.previous_run,'rb') as file:
+                        db = pickle.load(file)
+                    if args.previous_run_manual:
+                        start = {}
+                        if 'start' in db:
+                            param_k = 'start'
+                            if 'model_param' in db[param_k]:
+                                start_vals = db[param_k]['model_param']
+                                start['model_param'] = np.array([
+                                    start_vals[key] for key in key_frame.index])
+                            if 'model_param_intercept' in db[param_k]:
+                                start['model_param_intercept'] = db[param_k]['model_param_intercept']
+                        else:
+                            param_k = 'MAP'
+                            if 'model_param' in db[param_k]:
+                                start_vals = db[param_k]['model_param']
+                                s_model_p = []
+                                for key in key_frame.index:
+                                    loc = db['keys'].index(key)
+                                    s_model_p.append(start_vals[loc])
+                                start['model_param'] = np.array(s_model_p)
+                            if 'model_param_intercept' in db[param_k]:
+                                start['model_param_intercept'] = db[param_k]['model_param_intercept']
+                    else:
+                        trace = db['trace']
+                    del db
+    
+                step1 = pm.Metropolis(vars=stat_model.model_param)
+#                step2 = pm.NUTS()
+                trace = pm.sample(draws=10000, tune=2000, trace=trace, start=start,
+                                  cores=2, step=[step1, ])
+        
+                if not args.max_time is None:
+                    #max_time is in hours
+                    sample_timer = Timer(args.max_time*60*60, stop_sim, args=(stat_model,))
+                    sample_timer.start()
+                    
+                if not args.max_time is None:
+                    sample_timer.join()
             
         model_db['num_calls'] = run_biophysical.call_counter
         model_db['key_frame'] = key_frame

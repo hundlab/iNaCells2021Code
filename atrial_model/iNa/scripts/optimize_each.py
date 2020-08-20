@@ -66,13 +66,13 @@ keys_keep = []
 
 
 #I2/I1 Recovery
-keys_iin = [#('1323431_8', 'Dataset A -140'), ('1323431_8',	'Dataset A -120'),\
-            #('1323431_8',	'Dataset A -100'),\
-            ('21647304_3',	'Dataset C Adults'),# ('21647304_3',	'Dataset C Pediatrics'),\
-            ('8928874_9', 'Dataset fresh'),# ('8928874_9', 'Dataset day 1'),\
-            #('8928874_9', 'Dataset day 3'), ('8928874_9', 'Dataset day 5')
-]
-keys_keep += keys_iin
+# keys_iin = [#('1323431_8', 'Dataset A -140'), ('1323431_8',	'Dataset A -120'),\
+#             #('1323431_8',	'Dataset A -100'),\
+#             ('21647304_3',	'Dataset C Adults'),# ('21647304_3',	'Dataset C Pediatrics'),\
+#             ('8928874_9', 'Dataset fresh'),# ('8928874_9', 'Dataset day 1'),\
+#             #('8928874_9', 'Dataset day 3'), ('8928874_9', 'Dataset day 5')
+# ]
+#keys_keep += keys_iin
 
 
 # # #recovery normalized to preprepulse
@@ -90,17 +90,17 @@ keys_keep += keys_iin
 
 
 
-# ##inactivation normalized to no prepulse
-# keys_iin = [
-#     ('7971163_4', 'Dataset 32ms'), ('7971163_4', 'Dataset 64ms'),
-#             ('7971163_4', 'Dataset 128ms'), ('7971163_4', 'Dataset 256ms'),
-#               ('7971163_4', 'Dataset 512ms'),\
+##inactivation normalized to no prepulse
+keys_iin = [
+    ('7971163_4', 'Dataset 32ms'), ('7971163_4', 'Dataset 64ms'),
+             ('7971163_4', 'Dataset 128ms'), ('7971163_4', 'Dataset 256ms'),
+               ('7971163_4', 'Dataset 512ms'),\
 
-#             ('8928874_8',	'Dataset C fresh'), ('8928874_8',	'Dataset C day 1'),\
-#             ('8928874_8',	'Dataset C day 3'), ('8928874_8',	'Dataset C day 5')
-#             ]
-# ##('21647304_3',	'Dataset B Adults'), ('21647304_3',	'Dataset B Pediatrics')
-# keys_keep += keys_iin
+             ('8928874_8',	'Dataset C fresh'), ('8928874_8',	'Dataset C day 1'),\
+             ('8928874_8',	'Dataset C day 3'), ('8928874_8',	'Dataset C day 5')
+            ]
+##('21647304_3',	'Dataset B Adults'), ('21647304_3',	'Dataset B Pediatrics')
+keys_keep += keys_iin
 
 
 # #inactivation normalized to first
@@ -144,9 +144,9 @@ keys_keep += keys_iin
 #------------------------------------------------------------------------------
 #------------------------------------------------------------------------------
 
-#keys_all = set(keys_keep)
-#sim_fs = {key: sim_f for key, sim_f in sim_fs.items() if key in keys_all}
-#datas = {key: data for key, data in datas.items() if key in keys_all}
+keys_all = set(keys_keep)
+sim_fs = {key: sim_f for key, sim_f in sim_fs.items() if key in keys_all}
+datas = {key: data for key, data in datas.items() if key in keys_all}
 
 
 np.seterr(all='ignore')
@@ -179,6 +179,12 @@ if __name__ == '__main__':
                                     pool=proc_pool,ssq=True,\
                                     results=all_res)
                 minimizer_kwargs = {"method": lstsq_wrap, "options":{"ssq": False}}#"bounds": sub_mp_bounds,
+
+                # res.res[key] = optimize.dual_annealing(
+                #                                   diff_fn, bounds=sub_mp_bounds,
+                #                                   no_local_search=True,
+                #                                   local_search_options=minimizer_kwargs,
+                #                                   maxiter=100,maxfun=6)
 
                 fut_results[key] = thread_pool.submit(optimize.dual_annealing, 
                                                   diff_fn, bounds=sub_mp_bounds,

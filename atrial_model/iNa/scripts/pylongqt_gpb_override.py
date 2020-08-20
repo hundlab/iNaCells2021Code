@@ -17,7 +17,7 @@ sys.path.append(os.path.abspath(
 
 from atrial_model.iNa import models
 
-ina_model = models.OHaraRudy_INa
+ina_model = models.OHaraRudy_wMark_INa
 
 
 class GpbHumanAtrialSubmodel(pylqt.Cells.GpbAtrialOnal17):
@@ -38,6 +38,7 @@ class GpbHumanAtrialSubmodel(pylqt.Cells.GpbAtrialOnal17):
             naO = self.pars['naO']
             naI = self.vars['naI']
             self.model = self.model_init(TEMP=TEMP, naO=naO, naI=naI)
+            self.model.memoize = False
     def cell_type(self):
         return self.__name__
     def set_submodel(self, model_init):
@@ -49,7 +50,7 @@ class GpbHumanAtrialSubmodel(pylqt.Cells.GpbAtrialOnal17):
         Fjunc = self.pars['Fjunc']
         Fsl = self.pars['Fsl']
         
-        iNa = self.model.update(vOld, dt)
+        iNa = self.model.update(vOld, dt, record=False)
         
         iNajunc = Fjunc * iNa
         iNasl = Fsl * iNa
@@ -67,6 +68,6 @@ cell_ep_model.model_init = ina_model
 
 proto = pylqt.Protocols.CurrentClamp()
 proto.cell = cell_ep_model
-proto.tMax = 2000
+proto.tMax = 20000
 proto.writetime = 0
 proto.runSim()

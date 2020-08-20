@@ -75,7 +75,7 @@ def scipySolver(flat_durs, flat_voltages, run_model, solver, dt=None):
         jac = None
     try:
         res = solver(wrap_run_model, (0,wrap_run_model.t_end), run_model.state_vals,
-                     first_step=dt, max_step = max_step, jac=jac, vectorized=True)
+                     first_step=dt, max_step = max_step, jac=jac)#, vectorized=True)
     except Exception as e:
         print("Model State:")
         print(wrap_run_model.run_model.lastVal)
@@ -106,14 +106,14 @@ def solveAndProcesses(durs, voltages, run_model, solver, dt, process, sub_sim_po
     vMs = np.array(vMs)
     
     if run_sims_functions.plot1:
-        plt.figure()
-        plt.subplot(311)
-        plt.plot(times, iNa)
-        plt.subplot(312)
-        plt.plot(times, vMs)
-        plt.subplot(313)
-        lines = plt.plot(times, run_model.recArray)
-        plt.legend(lines, list(run_model.recArrayNames))
+        fig = plt.figure()
+        ax = [fig.add_subplot(3,1,1)]
+        ax.append(fig.add_subplot(3,1,2, sharex=ax[0]))
+        ax.append(fig.add_subplot(3,1,3, sharex=ax[0]))
+        ax[0].plot(times, iNa)
+        ax[1].plot(times, vMs)
+        lines = ax[2].plot(times, run_model.recArray)
+        ax[2].legend(lines, list(run_model.recArrayNames))
         
     processed = process(times=times,current=iNa,vMs=vMs,sub_sim_pos=sub_sim_pos,durs=durs)
 

@@ -6,6 +6,7 @@ Created on Tue Mar 17 10:31:31 2020
 @author: grat05
 """
 import numpy as np
+from math import exp
 import pandas as pd
 from functools import wraps
 
@@ -27,8 +28,9 @@ class SodiumChannelModel():
         self.naI = naI
         
         self.recArrayNames = pd.Index(recArrayNames)
-        self.state_vals = pd.Series(state_vals, index=self.recArrayNames, dtype='float64')
         self.num_states = len(self.recArrayNames)
+        self._state_vals = np.array(state_vals, dtype='float64')
+        
 
         self._recArray = []
 
@@ -43,6 +45,10 @@ class SodiumChannelModel():
     @property
     def recArray(self):
         return pd.DataFrame(np.array(self._recArray), columns=self.recArrayNames)
+    
+    @property
+    def state_vals(self):
+        return pd.Series(self._state_vals, index=self.recArrayNames, dtype='float64')
     
     def calc_constants(self, vOld):
         pass
@@ -60,7 +66,7 @@ class SodiumChannelModel():
         pass
     
     def update(self, vOld, dt, record=True):
-        vals = self.state_vals
+        vals = self._state_vals
         ddt = self.ddtcalc(vals, vOld)
         vals += ddt*dt
         return self.calcCurrent(vals, vOld, setRecArray=record)
@@ -303,7 +309,7 @@ class OHaraRudy_INa(SodiumChannelModel):
         Ahf = 0.99*self.Ahf_mult;
         Ahs = 1.0 - Ahf;
         
-        h = Ahf *hf + Ahs *j#Ahf * hf + Ahs * hs; #
+        h = Ahf * hf + Ahs * hs;
         hp = Ahf * hf + Ahs *hsp;
         
         fINap = (1.0 / (1.0 + self.KmCaMK / self.CaMKa));
@@ -414,7 +420,7 @@ class OHaraRudy_wMark_INa(SodiumChannelModel):
 
         #h gate 8
         self.hss_tau = 14.086*np.exp(hss_tauFactor)
-        self.hfss_shift = -56+hss_shiftFactor
+        self.hfss_shift = -76+hss_shiftFactor
         #self.hsss_shift = -87.90+hss_shiftFactor#np.exp(hsss_shiftFactor)
 
         self.thf_max = 5*np.exp(thf_maxFactor)
@@ -466,28 +472,28 @@ class OHaraRudy_wMark_INa(SodiumChannelModel):
     @memoize_calc_constants
     def calc_constants(self, vOld):
         
-        vOld = np.array(vOld,ndmin=1)
+        #vOld = np.array(vOld,ndmin=1)
 
         tau = ObjDict()
         ss = ObjDict()
         
         num_a_b = 5
-        a = np.empty((num_a_b, len(vOld)))
-        b = np.empty((num_a_b, len(vOld)))
+        a = np.empty(num_a_b)#np.empty((num_a_b, len(vOld)))
+        b = np.empty(num_a_b)#np.empty((num_a_b, len(vOld)))
         
         
-        ss.mss = 1.0 / (1.0 + np.exp((-(vOld + self.mss_shift)) / self.mss_tau));
-        tau.tm = self.baseline/15+ self.tm_max/(np.exp((vOld-self.tm_shift)/self.tm_tau1) 
-                                                + np.exp(-(vOld-self.tm_shift)/self.tm_tau2))
+        ss.mss = 1.0 / (1.0 + exp((-(vOld + self.mss_shift)) / self.mss_tau));
+        tau.tm = self.baseline/15+ self.tm_max/(exp((vOld-self.tm_shift)/self.tm_tau1) 
+                                                + exp(-(vOld-self.tm_shift)/self.tm_tau2))
         #1.0 / (self.tm_mult1 * np.exp((vOld + 11.64) / self.tm_tau1) +
         #                   self.tm_mult2 * np.exp(-(vOld + 77.42) / self.tm_tau2));
         
         a[0] = ss.mss/tau.tm
         b[0] = (1-ss.mss)/tau.tm
 
-        ss.hfss = 1.0 / (1 + np.exp((vOld - self.hfss_shift) / (self.hss_tau)))
-        tau.thf = self.baseline/10 + (self.thf_max-self.baseline/5)/(np.exp((vOld-self.thf_shift)/self.thf_tau2) 
-                                                + np.exp(-(vOld-self.thf_shift)/self.thf_tau1))
+        ss.hfss = 1.0 / (1 + exp((vOld - self.hfss_shift) / (self.hss_tau)))
+        tau.thf = self.baseline/10 + self.thf_max/(exp((vOld-self.thf_shift)/self.thf_tau2) 
+                                                + exp(-(vOld-self.thf_shift)/self.thf_tau1))
 
         a[1] = ss.hfss/tau.thf
         b[1] = (1-ss.hfss)/tau.thf
@@ -498,8 +504,8 @@ class OHaraRudy_wMark_INa(SodiumChannelModel):
 #        tau.thf = np.clip(tau.thf, a_max=15, a_min=None)
         #1.0 / (1 + np.exp((vOld - self.hsss_shift) / (self.hss_tau)))
         ss.hsss = ss.hfss
-        tau.ths = self.baseline +  (self.ths_max-self.baseline)/(np.exp((vOld-self.ths_shift)/self.ths_tau2) 
-                                                + np.exp(-(vOld-self.ths_shift)/self.ths_tau1))
+        tau.ths = self.baseline +  self.ths_max/(exp((vOld-self.ths_shift)/self.ths_tau2) 
+                                                + exp(-(vOld-self.ths_shift)/self.ths_tau1))
         
         a[2] = ss.hsss/tau.ths
         b[2] = (1-ss.hsss)/tau.ths
@@ -510,9 +516,9 @@ class OHaraRudy_wMark_INa(SodiumChannelModel):
 #            tau.ths = self.baseline
 #        tau.ths = np.clip(tau.ths, a_max=20, a_min=None)
 
-        ss.jss = 1.0 / (1 + np.exp((vOld - self.jss_shift) / (self.jss_tau)));#hss;
-        tau.tj = self.baseline + (self.tj_max-self.baseline)/(np.exp((vOld-self.tj_shift)/self.tj_tau1) 
-                                                + np.exp(-(vOld-self.tj_shift)/self.tj_tau2))
+        ss.jss = 1.0 / (1 + exp((vOld - self.jss_shift) / (self.jss_tau)));#hss;
+        tau.tj = self.baseline + (self.tj_max-self.baseline)/(exp((vOld-self.tj_shift)/self.tj_tau1) 
+                                                + exp(-(vOld-self.tj_shift)/self.tj_tau2))
         
         a[3] = ss.jss/tau.tj
         b[3] = (1-ss.jss)/tau.tj
@@ -527,11 +533,11 @@ class OHaraRudy_wMark_INa(SodiumChannelModel):
         b[4] = 0#(1-ss.jss2)/(tau.tj2)
         
 
-#        tau.__dict__ = {key: min(max(value, 1e-8), 1e20) for key,value in tau.__dict__.items()}
-        a = np.squeeze(a)
-        b = np.squeeze(b)
-        tau.__dict__ = {key: np.squeeze(value) for key,value in tau.__dict__.items()}
-        ss.__dict__ = {key: np.squeeze(value) for key,value in ss.__dict__.items()}
+###        tau.__dict__ = {key: min(max(value, 1e-8), 1e20) for key,value in tau.__dict__.items()}
+#        a = np.squeeze(a)
+#        b = np.squeeze(b)
+#        tau.__dict__ = {key: np.squeeze(value) for key,value in tau.__dict__.items()}
+#        ss.__dict__ = {key: np.squeeze(value) for key,value in ss.__dict__.items()}
         return tau, ss, a, b
     
     def jac(self, vOld):
@@ -579,9 +585,10 @@ class OHaraRudy_wMark_INa(SodiumChannelModel):
 
     def ddtcalc(self, vals, vOld):
         d_vals = np.zeros_like(vals)
-        vals = np.clip(vals, a_min=0, a_max=1)
+#        vals = np.clip(vals, a_min=0, a_max=1)
         
-        if self.lastddt is not None and\
+        if self.memoize and\
+            self.lastddt is not None and\
             np.array_equal(self.lastddt[0], vOld) and\
             np.array_equal(self.lastddt[1], vals):
 #            print(np.sum(np.abs(self.lastddt[1]- vals)))

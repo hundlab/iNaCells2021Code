@@ -158,20 +158,24 @@ atrial_model.run_sims_functions.plot2 = True #diff
 atrial_model.run_sims_functions.plot3 = False #tau
 
 if __name__ == '__main__':
+    chain = 1
+    burn_till =  20000
+    
     #filename = './mcmc_Koval_0511_1609'
     #filename = 'mcmc_Koval_0601_1835'
     #filename = 'mcmc_OHaraRudy_wMark_INa_0528_1833'
-    filename = 'mcmc_OHaraRudy_wMark_INa_0606_0047'
-    filepath = atrial_model.fit_data_dir+'/'+filename
-    chain = 0
-    burn_till = 5000
-    trace_metadata_file = 'mcmc_Koval_0526_1728_metadata.pickle'
-    with open(filepath+'.pickle','rb') as file:
-        db = pickle.load(file)
-    with open(filepath+'_metadata.pickle','rb') as file:
+    #filename = 'mcmc_OHaraRudy_wMark_INa_0606_0047'
+    #filename = 'mcmc_OHaraRudy_wMark_INa_0627_1152'
+    filename = 'mcmc_OHaraRudy_wMark_INa_0702_1656'
+    
+    base_dir = atrial_model.fit_data_dir+'/'
+    with open(base_dir+'/'+filename+'_metadata.pickle','rb') as file:
         model_metadata = pickle.load(file)
+    with open(base_dir+model_metadata.trace_pickel_file,'rb') as file:
+        db = pickle.load(file)
     if db['_state_']['sampler']['status'] == 'paused':
         current_iter = db['_state_']['sampler']['_current_iter']
+        current_iter -= db['_state_']['sampler']['_burn']
         for key in db.keys():
             if key != '_state_':
                 db[key][chain] = db[key][chain][:current_iter]
@@ -181,13 +185,18 @@ if __name__ == '__main__':
         temps = [0, 10, 20]
         for temp in temps:
             b_temp = np.median(db['b_temp'][chain][burn_till:], axis=0)
+            for i in range(db['b_temp'][chain].shape[1]):
+                trace = db['b_temp'][chain][burn_till:, i]
+                f_sig = np.sum(trace > 0)/len(trace)
+                if not (f_sig < 0.05 or f_sig > 0.95):
+                    b_temp[i] = 0
             intercept = np.median(db['model_param_mean'][chain][burn_till:], axis=0)
             b_temp_eff = b_temp*temp
             sub_mps = intercept + b_temp_eff
 #            sub_mps[[6,8,10]] = intercept[[6,8,10]] - 2*b_temp_eff[[6,8,10]]
 #            sub_mps[0] = intercept[0]
 #            sub_mps[[1]] = intercept[[1]] - b_temp_eff[[1]]
-            mp_locs = model_metadata.mp_locs
+#            mp_locs = model_metadata.mp_locs
             
             diff_fn = partial(calc_diff, model_parameters_full=model_params_initial,\
                             mp_locs=mp_locs, sim_func=sim_fs, data=datas,\
