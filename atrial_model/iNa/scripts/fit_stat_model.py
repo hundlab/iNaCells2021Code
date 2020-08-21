@@ -79,24 +79,31 @@ if __name__ == '__main__':
                         pool=proc_pool)
         run_biophysical = SimResults(calc_fn=calc_fn, sim_funcs=sim_fs)
 
-        
+        start = {}
+        if args.previous_run_manual and not args.previous_run is None:
+            with open(args.previous_run,'rb') as file:
+                    old_db = pickle.load(file)
+            start = old_db['MAP']
+
         made_model = make_model(run_biophysical, keys_all, datas, 
-                                model_params_initial, mp_locs, model, 
-                                exp_parameters['temp ( K )'])
+                                mp_locs, model, start=start, 
+                                temperatures=exp_parameters['temp ( K )'])
         db = 'pickle'
         if not args.previous_run is None and not args.previous_run_manual:
             db = pymc.database.pickle.load(args.previous_run)
-        elif not args.previous_run is None:
-                with open(args.previous_run,'rb') as file:
-                    old_db = pickle.load(file)
-                prev_state = old_db['_state_']['stochastics']
-                for var in made_model:
-                    if var.__name__ == 'model_param':
-                        var.value = prev_state[var.__name__]
-                    # if var.__name__ in prev_state:
-                    #     var.value = prev_state[var.__name__]
-                del old_db
+        # elif not args.previous_run is None:
+        #         with open(args.previous_run,'rb') as file:
+        #             old_db = pickle.load(file)
+        #         prev_state = old_db['_state_']['stochastics']
+        #         for var in made_model:
+        #             if var.__name__ == 'model_param':
+        #                 var.value = prev_state[var.__name__]
+        #         del old_db
         pymc_model = pymc.MCMC(made_model, db=db, dbname=db_path)
+        pymc_model.use_step_method(pymc.AdaptiveMetropolis, pymc_model.get_node('model_param'))
+        pymc_model.use_step_method(pymc.AdaptiveMetropolis, pymc_model.get_node('b_temp'))
+        pymc_model.use_step_method(pymc.AdaptiveMetropolis, pymc_model.get_node('model_param_tau'))
+        pymc_model.use_step_method(pymc.AdaptiveMetropolis, pymc_model.get_node('model_param_mean'))
 
         if not args.max_time is None:
             #max_time is in hours

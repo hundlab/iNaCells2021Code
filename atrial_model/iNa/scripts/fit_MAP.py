@@ -225,7 +225,7 @@ if __name__ == '__main__':
             with StatModel(run_biophysical, sub_key_frame, datas,
                                 mp_locs, model) as stat_model:
                 map_estimates = pm.find_MAP(model=stat_model, include_transformed=False
-                                            , method='powell', maxeval=100)
+                                            , method='powell', maxeval=10000)
                 map_res['sub_MAP'][grp_name] = map_estimates
             
             fitted = map_estimates['model_param_sigma'] > 1e-3
@@ -249,13 +249,14 @@ if __name__ == '__main__':
                 key_frame['temp ( K )']*start['b_temp'][i]
             start['model_param'][unfit,i] = mean_vals[unfit]
 
-        map_res['start'] = start
+        map_res['start'] = copy.deepcopy(start)
         
         with StatModel(run_biophysical, key_frame, datas,
                                 mp_locs, model) as stat_model:
             #method='powell'method='Nelder-Mead'
+            print("full model")
             map_estimates = pm.find_MAP(start=start, model=stat_model, include_transformed=False
-                                        , method='powell', maxeval=400)
+                                        , method='powell', maxeval=40000)
             map_res['MAP'] = map_estimates
 
     with open(db_path, 'wb') as file:
