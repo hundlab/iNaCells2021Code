@@ -6,7 +6,7 @@ Created on Tue Mar 17 10:31:31 2020
 @author: grat05
 """
 import numpy as np
-from math import exp
+from numpy import exp
 import pandas as pd
 from functools import wraps
 
@@ -472,14 +472,14 @@ class OHaraRudy_wMark_INa(SodiumChannelModel):
     @memoize_calc_constants
     def calc_constants(self, vOld):
         
-        #vOld = np.array(vOld,ndmin=1)
+        vOld = np.array(vOld,ndmin=1)
 
         tau = ObjDict()
         ss = ObjDict()
         
         num_a_b = 5
-        a = np.empty(num_a_b)#np.empty((num_a_b, len(vOld)))
-        b = np.empty(num_a_b)#np.empty((num_a_b, len(vOld)))
+        a = np.empty((num_a_b, len(vOld)))#np.empty(num_a_b)#
+        b = np.empty((num_a_b, len(vOld)))#np.empty(num_a_b)#np.empty((num_a_b, len(vOld)))
         
         
         ss.mss = 1.0 / (1.0 + exp((-(vOld + self.mss_shift)) / self.mss_tau));
@@ -585,7 +585,7 @@ class OHaraRudy_wMark_INa(SodiumChannelModel):
 
     def ddtcalc(self, vals, vOld):
         d_vals = np.zeros_like(vals)
-#        vals = np.clip(vals, a_min=0, a_max=1)
+        vals = np.clip(vals, a_min=0, a_max=1)
         
         if self.memoize and\
             self.lastddt is not None and\
