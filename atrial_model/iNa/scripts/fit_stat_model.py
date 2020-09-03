@@ -27,6 +27,7 @@ from atrial_model.run_sims import calc_results, SimResults
 from atrial_model.iNa.define_sims import sim_fs, datas, keys_all, exp_parameters
 from atrial_model.iNa.stat_model import make_model
 from atrial_model.iNa.model_setup import model_params_initial, mp_locs, sub_mps, model
+from atrial_model.pymc2step import AdaptiveSDMetropolis
 
 #from './optimize_Koval_0423_0326.pkl'
 # model_params_initial[mp_locs] = np.array(
@@ -41,10 +42,9 @@ class ObjContainer():
     pass
 
 def stop_sim(pymc_model):
-    pymc_model.pause()
-    pymc_model.save_state()
-    pymc_model.tally()
     pymc_model.halt()
+    #pymc_model.tally()
+    pymc_model.save_state()
     print("Sampling Canceled")
     
 if __name__ == '__main__':
@@ -77,7 +77,7 @@ if __name__ == '__main__':
         calc_fn = partial(calc_results, model_parameters_full=model_params_initial,\
                         mp_locs=mp_locs, data=datas,error_fill=0,\
                         pool=proc_pool)
-        run_biophysical = SimResults(calc_fn=calc_fn, sim_funcs=sim_fs)
+        run_biophysical = SimResults(calc_fn=calc_fn, sim_funcs=sim_fs, disp_print=False)
 
         start = {}
         if args.previous_run_manual and not args.previous_run is None:
@@ -100,20 +100,59 @@ if __name__ == '__main__':
         #                 var.value = prev_state[var.__name__]
         #         del old_db
         pymc_model = pymc.MCMC(made_model, db=db, dbname=db_path)
-        pymc_model.use_step_method(pymc.AdaptiveMetropolis, pymc_model.get_node('model_param'))
-        pymc_model.use_step_method(pymc.AdaptiveMetropolis, pymc_model.get_node('b_temp'))
-        pymc_model.use_step_method(pymc.AdaptiveMetropolis, pymc_model.get_node('model_param_tau'))
-        pymc_model.use_step_method(pymc.AdaptiveMetropolis, pymc_model.get_node('model_param_mean'))
+        
+        nodes = [pymc_model.get_node(node_name) 
+                 for node_name in ['model_param_mean', 'b_temp']]
+        cov = np.load(args.out_dir+'/model_mean.npy')
+        pymc_model.use_step_method(pymc.AdaptiveMetropolis, nodes,
+                                       shrink_if_necessary=True,
+                                       cov=cov,
+                                       delay=500, interval=400)
+        
+        # node = pymc_model.get_node('model_param')
+        # scale = 0.001*np.ones(node.value.size)
+        # pymc_model.use_step_method(pymc.AdaptiveMetropolis, node,
+        #                              shrink_if_necessary=True,
+        #                              scales={node: scale},
+        #                              delay=500, interval=1400)
+        node = pymc_model.get_node('model_param')
+        sd = 0.01*np.ones(node.value.shape)
+        pymc_model.use_step_method(AdaptiveSDMetropolis, node,
+                             proposal_sd=sd,
+                             delay=100, interval=200)
+
+        
+        node = pymc_model.get_node('model_param_tau')
+        sd = np.load(args.out_dir+'/model_param_tau.npy')
+        pymc_model.use_step_method(pymc.Metropolis, node,
+                                   proposal_sd=sd)
+        
+        node = pymc_model.get_node('error_tau')
+        sd = np.load(args.out_dir+'/error_tau.npy')
+        pymc_model.use_step_method(pymc.Metropolis, node,
+                                   proposal_sd=sd)
+        
+        # adaptive_nodes = ['model_param', 'b_temp','model_param_mean']
+        # node_scales = [0.0187618294, 0.00531441, 0.0215233]
+        
+        # for i, node_name in enumerate(adaptive_nodes):
+        #     node = pymc_model.get_node(node_name)
+        #     scale = node_scales[i]*np.ones(node.value.size)
+        #     pymc_model.use_step_method(pymc.AdaptiveMetropolis, node,
+        #                                shrink_if_necessary=True,
+        #                                scales={node: scale})
 
         if not args.max_time is None:
             #max_time is in hours
             sample_timer = Timer(args.max_time*60*60, stop_sim, args=(pymc_model,))
             sample_timer.start()
-            
-        pymc_model.sample(iter=100000, burn=0, thin=1, tune_throughout=True, save_interval=100)#, burn_till_tuned=True)
+        
+        pymc_model.sample(iter=100_000, burn=0, thin=1, tune_throughout=True, 
+                          save_interval=100, tune_interval=300)#, burn_till_tuned=True)
         pymc_model.db.close()
         
         if not args.max_time is None:
+            sample_timer.cancel()
             sample_timer.join()
         
         model_metadata.num_calls = run_biophysical.call_counter

@@ -21,6 +21,8 @@ def make_model(run_biophysical, key_groups, datas,
     mu = np.zeros_like(mp_locs)
     tau = 0.001* np.ones_like(mp_locs)
     model_bounds = np.array(model.param_bounds)
+    if 'model_param_intercept' in start:
+        start['model_param_mean'] = start['model_param_intercept']
     if "model_param_mean" not in start:
         start['model_param_mean'] = np.zeros_like(mp_locs)
     model_param_mean = pymc.Normal("model_param_mean",
