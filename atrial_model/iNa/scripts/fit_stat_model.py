@@ -101,22 +101,27 @@ if __name__ == '__main__':
         #         del old_db
         pymc_model = pymc.MCMC(made_model, db=db, dbname=db_path)
         
-        nodes = [pymc_model.get_node(node_name) 
-                 for node_name in ['model_param_mean', 'b_temp']]
-        cov = np.load(args.out_dir+'/model_mean.npy')
-        pymc_model.use_step_method(pymc.AdaptiveMetropolis, nodes,
-                                       shrink_if_necessary=True,
-                                       cov=cov,
-                                       delay=500, interval=400)
+        # nodes = [pymc_model.get_node(node_name) 
+        #          for node_name in ['model_param_mean', 'b_temp']]
+        # cov = np.load(args.out_dir+'/model_mean.npy')
+        # pymc_model.use_step_method(pymc.AdaptiveMetropolis, nodes,
+        #                                shrink_if_necessary=True,
+        #                                cov=cov,
+        #                                delay=500, interval=400)
         
-        # node = pymc_model.get_node('model_param')
-        # scale = 0.001*np.ones(node.value.size)
-        # pymc_model.use_step_method(pymc.AdaptiveMetropolis, node,
-        #                              shrink_if_necessary=True,
-        #                              scales={node: scale},
-        #                              delay=500, interval=1400)
+        node = pymc_model.get_node('model_param_mean')
+        sd = np.load(args.out_dir+'/model_param_mean.npy')
+        pymc_model.use_step_method(pymc.Metropolis, node,
+                             proposal_sd=sd)
+        
+        node = pymc_model.get_node('b_temp')
+        sd = np.load(args.out_dir+'/b_temp.npy')
+        pymc_model.use_step_method(pymc.Metropolis, node,
+                             proposal_sd=sd)
+
+
         node = pymc_model.get_node('model_param')
-        sd = 0.01*np.ones(node.value.shape)
+        sd = np.load(args.out_dir+'/model_param.npy')#0.01*np.ones(node.value.shape)
         pymc_model.use_step_method(AdaptiveSDMetropolis, node,
                              proposal_sd=sd,
                              delay=100, interval=200)

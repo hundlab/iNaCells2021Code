@@ -173,6 +173,7 @@ class AdaptiveSDMetropolis(StepMethod):
                 print_(self._id + ' returning.')
             return
 
+        print(logp)
         if self.verbose > 2:
             print_('logp_p - logp: ', logp_p - logp)
 
