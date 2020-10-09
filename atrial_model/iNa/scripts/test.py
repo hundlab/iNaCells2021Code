@@ -15,7 +15,7 @@ from atrial_model.iNa.models import OHaraRudy_INa, Koval_ina
 import atrial_model.run_sims_functions
 from atrial_model.run_sims_functions import peakCurr, normalized2val, calcExpTauInact, monoExp,\
 calcExpTauAct, triExp, biExp
-from atrial_model.run_sims import calc_diff
+from atrial_model.run_sims import calc_diff, calc_results
 from atrial_model.iNa.define_sims import sim_fs, datas,\
     keys_all, exp_parameters, data
 from atrial_model.iNa.model_setup import model, mp_locs, sub_mps, sub_mp_bounds, model_params_initial, model_param_names
@@ -33,87 +33,88 @@ keys_keep = []
 #------------------------------------------------------------------------------
 #------------------------------------------------------------------------------
 
-# #iv curve
-keys_iin = [
-('1323431_1',	'Dataset B'), ('1323431_3',	'Dataset A 2'),
-('1323431_3',	'Dataset A 20'), ('1323431_3',	'Dataset A 5'),
-('1323431_4',	'Dataset B Control'),
-#('7971163_1', 'Dataset'),
+# # #iv curve
+#keys_iin = [
+# ('1323431_1',	'Dataset B'), ('1323431_3',	'Dataset A 2'),
+# ('1323431_3',	'Dataset A 20'), ('1323431_3',	'Dataset A 5'),
+# ('1323431_4',	'Dataset B Control'),
+# #('7971163_1', 'Dataset'),
  
-('8928874_7',	'Dataset C day 1'), ('8928874_7',	'Dataset C day 3'),
-('8928874_7',	'Dataset C day 5'), ('8928874_7',	'Dataset C fresh'),
-('21647304_1',	'Dataset B Adults'), ###('21647304_1', 'Dataset B Pediatrics'),
-('12890054_3', 'Dataset C Control'), ('12890054_3',	'Dataset D Control'),
-('12890054_5', 'Dataset C Control'), ###('12890054_5',	'Dataset D Control'),
-('23341576_2', 'Dataset C Control')
-]
-keys_keep += keys_iin
+# ('8928874_7',	'Dataset C day 1'), ('8928874_7',	'Dataset C day 3'),
+# ('8928874_7',	'Dataset C day 5'), ('8928874_7',	'Dataset C fresh'),
+# ('21647304_1',	'Dataset B Adults'), ###('21647304_1', 'Dataset B Pediatrics'),
+# ('12890054_3', 'Dataset C Control'), ('12890054_3',	'Dataset D Control'),
+# ('12890054_5', 'Dataset C Control'), ###('12890054_5',	'Dataset D Control'),
+# ('23341576_2', 'Dataset C Control')
+#]
+#keys_keep += keys_iin
 
 
 ##activation normalized to driving force
 keys_iin = [
             ('1323431_2',	'Dataset'),\
-            ('8928874_7',	'Dataset D fresh'), ('8928874_7',	'Dataset D day 1'),\
-            ('8928874_7',	'Dataset D day 3'), ('8928874_7',	'Dataset D day 5'),\
-            ('21647304_3',	'Dataset A Adults'), ('21647304_3',	'Dataset A Pediatrics')
+#            ('8928874_7',	'Dataset D fresh'), ('8928874_7',	'Dataset D day 1'),\
+#            ('8928874_7',	'Dataset D day 3'), ('8928874_7',	'Dataset D day 5'),\
+#            ('21647304_3',	'Dataset A Adults'), ('21647304_3',	'Dataset A Pediatrics')
 ]
 keys_keep += keys_iin
 
 
 
 
-# I2/I1 Recovery
-keys_iin = [('1323431_8', 'Dataset A -140'), ('1323431_8',	'Dataset A -120'),\
-              ('1323431_8',	'Dataset A -100'),\
-            ('21647304_3',	'Dataset C Adults'), ('21647304_3',	'Dataset C Pediatrics'),\
-            ('8928874_9', 'Dataset fresh'), ('8928874_9', 'Dataset day 1'),\
-            ('8928874_9', 'Dataset day 3'), ('8928874_9', 'Dataset day 5')
-]
-keys_keep += keys_iin
+# # I2/I1 Recovery
+# keys_iin = [('1323431_8', 'Dataset A -140'), ('1323431_8',	'Dataset A -120'),\
+#               ('1323431_8',	'Dataset A -100'),\
+#             ('21647304_3',	'Dataset C Adults'), ('21647304_3',	'Dataset C Pediatrics'),\
+#             ('8928874_9', 'Dataset fresh'), ('8928874_9', 'Dataset day 1'),\
+#             ('8928874_9', 'Dataset day 3'), ('8928874_9', 'Dataset day 5')
+# ]
+# keys_keep += keys_iin
 
 
-#recovery normalized to preprepulse
-keys_iin = [\
-('7971163_6', 'Dataset -75'),\
-('7971163_6', 'Dataset -85'),\
-('7971163_6', 'Dataset -95'),\
-('7971163_6', 'Dataset -105'),\
-('7971163_6', 'Dataset -115'),
-('7971163_6', 'Dataset -125'),\
-('7971163_6', 'Dataset -135')
-]
-keys_keep += keys_iin
+# #recovery normalized to preprepulse
+# keys_iin = [\
+# ('7971163_6', 'Dataset -75'),\
+# ('7971163_6', 'Dataset -85'),\
+# ('7971163_6', 'Dataset -95'),\
+# ('7971163_6', 'Dataset -105'),\
+# ('7971163_6', 'Dataset -115'),
+# ('7971163_6', 'Dataset -125'),\
+# ('7971163_6', 'Dataset -135')
+# ]
+# keys_keep += keys_iin
 
 
 
 
-#inactivation normalized to no prepulse
-keys_iin = [
-                  ('7971163_4', 'Dataset 256ms'), ('7971163_4', 'Dataset 512ms'),\
+# #inactivation normalized to no prepulse
+#keys_iin = [
+#                   ('7971163_4', 'Dataset 256ms'), 
+#('7971163_4', 'Dataset 512ms'),\
 
-              ('8928874_8',	'Dataset C fresh'), ('8928874_8',	'Dataset C day 1'),\
-              ('8928874_8',	'Dataset C day 3'), ('8928874_8',	'Dataset C day 5'),
-('21647304_3',	'Dataset B Adults'), ('21647304_3',	'Dataset B Pediatrics')
-              ]
-# #
-keys_keep += keys_iin
-
-
-#inactivation normalized to first
-keys_iin = [('7971163_5',	'Dataset A -65'), ('7971163_5',	'Dataset A -75'),\
-            ('7971163_5',	'Dataset A -85'), ('7971163_5',	'Dataset A -95'),\
-            ('7971163_5',	'Dataset A -105')
-            ]
-keys_keep += keys_iin
+#               ('8928874_8',	'Dataset C fresh'), ('8928874_8',	'Dataset C day 1'),\
+#               ('8928874_8',	'Dataset C day 3'), ('8928874_8',	'Dataset C day 5'),
+# ('21647304_3',	'Dataset B Adults'), ('21647304_3',	'Dataset B Pediatrics')
+#]
+# # #
+#keys_keep += keys_iin
 
 
-#idealized current traces
-keys_iin = [#('21647304_2', 'Dataset B Adults'), ('21647304_2', 'Dataset B Pediactric'),
-              #('8928874_8',	'Dataset D fresh'),# ('8928874_8',	'Dataset D day 1'),\
-              #('8928874_8',	'Dataset D day 3'),# ('8928874_8',	'Dataset D day 5'),
-              ('7971163_3',	'Dataset C')
-]
-keys_keep += keys_iin
+# #inactivation normalized to first
+# keys_iin = [('7971163_5',	'Dataset A -65'), ('7971163_5',	'Dataset A -75'),\
+#             ('7971163_5',	'Dataset A -85'), ('7971163_5',	'Dataset A -95'),\
+#             ('7971163_5',	'Dataset A -105')
+#             ]
+# keys_keep += keys_iin
+
+
+# #idealized current traces
+# keys_iin = [('21647304_2', 'Dataset B Adults'), ('21647304_2', 'Dataset B Pediactric'),
+#               ('8928874_8',	'Dataset D fresh'), ('8928874_8',	'Dataset D day 1'),\
+#               ('8928874_8',	'Dataset D day 3'), ('8928874_8',	'Dataset D day 5'),
+#               ('7971163_3',	'Dataset C')
+# ]
+# keys_keep += keys_iin
 
 
 
@@ -167,43 +168,43 @@ if __name__ == '__main__':
     class ObjContainer():
         pass
     
-    #filename = 'MAP_OHaraRudy_wMark_INa_0805_0736'
-    #filename = 'MAP_OHaraRudy_wMark_INa_0801_1358'
-    filename = 'MAP_OHaraRudy_wMark_INa_0730_0849'
-    #filename = 'MAP_OHaraRudy_wMark_INa_0729_1715'
-    #filename = 'MAP_OHaraRudy_wMark_INa_0729_1634'
-    #filename = 'MAP_OHaraRudy_wMark_INa_0728_1137'
-    # filename = 'MAP_OHaraRudy_wMark_INa_0728_0818'
-    # # # filename = 'MAP_OHaraRudy_wMark_INa_0727_1720'
-    # # # #filename = 'MAP_OHaraRudy_wMark_INa_0727_1431'
-    # # # #filename = 'MAP_OHaraRudy_wMark_INa_0727_1210'
-    # # # #filename = 'MAP_OHaraRudy_wMark_INa_0727_0926'
-    # # # #filename = 'MAP_OHaraRudy_wMark_INa_0720_1147'
-    # # # #filename = 'MAP_OHaraRudy_wMark_INa_0720_1427'
-    # # # # filename = 'MAP_OHaraRudy_wMark_INa_0721_1012'
+    # #filename = 'MAP_OHaraRudy_wMark_INa_0805_0736'
+    # #filename = 'MAP_OHaraRudy_wMark_INa_0801_1358'
+    # filename = 'MAP_OHaraRudy_wMark_INa_0730_0849'
+    # #filename = 'MAP_OHaraRudy_wMark_INa_0729_1715'
+    # #filename = 'MAP_OHaraRudy_wMark_INa_0729_1634'
+    # #filename = 'MAP_OHaraRudy_wMark_INa_0728_1137'
+    # # filename = 'MAP_OHaraRudy_wMark_INa_0728_0818'
+    # # # # filename = 'MAP_OHaraRudy_wMark_INa_0727_1720'
+    # # # # #filename = 'MAP_OHaraRudy_wMark_INa_0727_1431'
+    # # # # #filename = 'MAP_OHaraRudy_wMark_INa_0727_1210'
+    # # # # #filename = 'MAP_OHaraRudy_wMark_INa_0727_0926'
+    # # # # #filename = 'MAP_OHaraRudy_wMark_INa_0720_1147'
+    # # # # #filename = 'MAP_OHaraRudy_wMark_INa_0720_1427'
+    # # # # # filename = 'MAP_OHaraRudy_wMark_INa_0721_1012'
 
-    base_dir = atrial_model.fit_data_dir+'/'
-    with open(base_dir+'/'+filename+'.pickle','rb') as file:
-        map_result = pickle.load(file)
-    keys_frame = key_frame(keys_keep_grps, exp_parameters)
-    sub_mps = {}
-    for key in keys_frame.index:
-        if key in map_result['keys']:
-            loc = map_result['keys'].index(key)
-            sub_mps[key] = map_result['MAP']['model_param'][loc]
-        else: 
-            sub_mps[key] = map_result['MAP']['model_param_intercept']
+    # base_dir = atrial_model.fit_data_dir+'/'
+    # with open(base_dir+'/'+filename+'.pickle','rb') as file:
+    #     map_result = pickle.load(file)
+    # keys_frame = key_frame(keys_keep_grps, exp_parameters)
+    # sub_mps = {}
+    # for key in keys_frame.index:
+    #     if key in map_result['keys']:
+    #         loc = map_result['keys'].index(key)
+    #         sub_mps[key] = map_result['MAP']['model_param'][loc]
+    #     else: 
+    #         sub_mps[key] = map_result['MAP']['model_param_intercept']
 
-    import pandas as pd
-    results_table = pd.DataFrame(index = model_param_names)
-    results_table['model_param_intercept'] = map_result['MAP']['model_param_intercept']
-    results_table['b_temp'] = map_result['MAP']['b_temp']
-    results_table['model_param_sigma'] = map_result['MAP']['model_param_sigma']
+    # import pandas as pd
+    # results_table = pd.DataFrame(index = model_param_names)
+    # results_table['model_param_intercept'] = map_result['MAP']['model_param_intercept']
+    # results_table['b_temp'] = map_result['MAP']['b_temp']
+    # results_table['model_param_sigma'] = map_result['MAP']['model_param_sigma']
 
 
-    results_model_params = pd.DataFrame(data=map_result['MAP']['model_param'],
-                                        columns=model_param_names,
-                                        index=map_result['keys'])
+    # results_model_params = pd.DataFrame(data=map_result['MAP']['model_param'],
+    #                                     columns=model_param_names,
+    #                                     index=map_result['keys'])
 
     # b_temp = map_result['MAP']['b_temp']
     # model_param_intercept = map_result['MAP']['model_param_intercept']
@@ -229,7 +230,7 @@ if __name__ == '__main__':
     
 #    sub_mps = db.x
 #    sub_mps[17] = -2
-#    sub_mps[0] = 100
+    #sub_mps[0] = 1000
 #    sub_mps[18] = 5
 #    expected_err = db.fun
 #    sub_mps = {key: res.x for key, res in db.res.items()}
@@ -238,14 +239,29 @@ if __name__ == '__main__':
 #        expected_err += res.fun
 #    print(expected_err)
 #    sub_mps = res.x
+    sub_mps = np.array([ 0.99853418, -3.02850451, -0.52426541, -5.30894684,  0.19784067,
+       -1.        ,  7.41353664,  2.23632115, -0.62730371,  8.36644525,
+       -3.06243539,  7.67223533, -0.52998804, -1.52531707, -1.6720276 ,
+        1.90942851,  0.91702488, -2.87504327,  1.16907694, -0.90701965,
+        6.8550732 , -3.11420156,  9.01382321, -0.20200651,  0.27550289])
+    
+    sub_mps[5] = -2
+    #sub_mps[5] = -4
+    #sub_mps[13] = 4
+    
+    sub_mps[4] = 0
+    #sub_mps[5] = -0.3
+    #sub_mps[10] = 0
+    
     with Pool() as proc_pool:
-#        proc_pool = None
+        proc_pool = None
         diff_fn = partial(calc_diff, model_parameters_full=model_params_initial,\
                         mp_locs=mp_locs, sim_func=sim_fs, data=datas,\
-                           pool=proc_pool,ssq=True)
-        error = diff_fn(sub_mps, exp_params=exp_parameters, 
-                        keys=keys_keep)
-        print(error)
+                           pool=proc_pool)
+        #diff_fn(sub_mps, exp_params=exp_parameters, 
+                        #keys=keys_keep)
+        res = diff_fn(sub_mps, exp_params=exp_parameters)
+        print(res)
 # vOld = np.arange(-150,50)
 # self = model(*model_params)
 

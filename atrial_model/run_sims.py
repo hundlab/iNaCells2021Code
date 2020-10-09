@@ -317,8 +317,11 @@ def calc_results(model_parameters_part, model_parameters_full, sim_funcs,\
         except Exception as e:
             print(e)
 #            raise e
-            sub_dat = data[key]
-            vals_sims[key] = error_fill*np.ones(sub_dat.shape[0])        
+            try:
+                sub_dat = data[key]
+                vals_sims[key] = error_fill*np.ones(sub_dat.shape[0])
+            except Exception:
+                 vals_sims[key] = error_fill*np.ones(1)
     return vals_sims
 
 def calc_diff(model_parameters_part, model_parameters_full, sim_func,\

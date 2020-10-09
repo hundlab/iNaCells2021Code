@@ -158,6 +158,16 @@ def minNorm_data(data, **kwargs):
     data[:,1] = normed
     return data
 
+def signsqrt(vals, **kwargs):
+    return np.sign(vals)*np.sqrt(np.abs(vals))
+
+def signsqrt_data(data, **kwargs):
+    data = np.copy(data)
+    normed = data[:,1]
+    normed = np.sign(normed)*np.sqrt(np.abs(normed))
+    data[:, 1] = normed
+    return data
+
 def correctShift_data(data, key, exp_parameters, model, **kwargs):
     data = np.copy(data)
     peak_loc = np.argmin(data[:,1])
@@ -180,4 +190,13 @@ def correctShift_data(data, key, exp_parameters, model, **kwargs):
     # plt.scatter(data[:,0], data[:,1])
 
     return data
-    
+
+def chainProcess_data(data, new_process, prev_process, **kwargs):
+    data = prev_process(data, **kwargs)
+    data = new_process(data, **kwargs)
+    return data
+
+def addNoise_data(data, sd=0.02):
+    data = np.copy(data)
+    data[:,1] = np.random.normal(loc=data[:,1], scale=sd)
+    return data

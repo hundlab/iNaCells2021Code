@@ -20,7 +20,9 @@ def make_model(run_biophysical, key_groups, datas,
     # overall model parameter mean prior ~N
     mu = np.zeros_like(mp_locs)
     tau = 0.001* np.ones_like(mp_locs)
-    model_bounds = np.array(model.param_bounds)
+    mu[18] = 1.7
+    tau[18] = 50
+#    model_bounds = np.array(model.param_bounds)
     if 'model_param_intercept' in start:
         start['model_param_mean'] = start['model_param_intercept']
     if "model_param_mean" not in start:
@@ -56,8 +58,17 @@ def make_model(run_biophysical, key_groups, datas,
                 k += 1
         
         #temperature coefficiant ~ N
+        #priors from OHaraRudy
         mu = np.zeros_like(mp_locs)# update to fit q10 (0.2)
-        tau = 0.001* np.ones_like(mp_locs) # .1
+        tau = np.ones_like(mp_locs) # .1
+        mu[[1,4,10,14,21]] = -0.7/10
+        tau[[1,4,10,14,21]] = 100
+        mu[[6,9,11,15,20,22]] = 0.4
+        mu[3] = -0.4
+        tau[[3,6,9,11,15,20,22]] = 100
+        mu[18] = 0
+        tau[18] = 50
+        
         if 'b_temp' not in start:
             start['b_temp'] = np.zeros_like(mp_locs)
         b_temp = pymc.Normal("b_temp",

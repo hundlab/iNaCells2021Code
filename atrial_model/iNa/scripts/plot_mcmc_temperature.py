@@ -14,7 +14,7 @@ sys.path.append(os.path.abspath(
 
 import atrial_model
 import atrial_model.run_sims_functions
-from atrial_model.run_sims import calc_diff
+from atrial_model.run_sims import calc_diff, calc_results
 from atrial_model.iNa.model_setup import model, mp_locs, sub_mps, sub_mp_bounds, model_params_initial
 from atrial_model.iNa.define_sims import sim_fs, datas,\
     keys_all, exp_parameters
@@ -25,6 +25,7 @@ import numpy as np
 import pickle
 import matplotlib.pyplot as plt
 from functools import partial
+import pandas as pd
 
 
 class ObjContainer():
@@ -72,16 +73,16 @@ keys_keep += keys_iin
 
 
 # #recovery normalized to preprepulse
-keys_iin = [\
+#keys_iin = [\
 #('7971163_6', 'Dataset -75'),\
 #('7971163_6', 'Dataset -85'),\
-('7971163_6', 'Dataset -95'),\
+#('7971163_6', 'Dataset -95'),\
 #('7971163_6', 'Dataset -105'),\
 #('7971163_6', 'Dataset -115'),
 #('7971163_6', 'Dataset -125'),\
 #('7971163_6', 'Dataset -135')
-]
-keys_keep += keys_iin
+#]
+#keys_keep += keys_iin
 
 
 
@@ -100,21 +101,21 @@ keys_keep += keys_iin
 
 
 #inactivation normalized to first
-keys_iin = [#('7971163_5',	'Dataset A -65'), ('7971163_5',	'Dataset A -75'),\
-            ('7971163_5',	'Dataset A -85')#, ('7971163_5',	'Dataset A -95'),\
+#keys_iin = [#('7971163_5',	'Dataset A -65'), ('7971163_5',	'Dataset A -75'),\
+#            ('7971163_5',	'Dataset A -85')#, ('7971163_5',	'Dataset A -95'),\
 #            ('7971163_5',	'Dataset A -105')
-            ]
-keys_keep += keys_iin
+#            ]
+#keys_keep += keys_iin
 
 
 
 #tau inactivation
-keys_iin = [('8928874_8', 'Dataset E fresh')#, ('8928874_8',	'Dataset E day 1'),\
+#keys_iin = [('8928874_8', 'Dataset E fresh')#, ('8928874_8',	'Dataset E day 1'),\
 #            ('8928874_8',	'Dataset E day 3'), ('8928874_8',	'Dataset E day 5')
-            ]#,\
+#            ]#,\
 #            ('1323431_5',	'Dataset B fast'),\
 #            ('21647304_2', 'Dataset C Adults'), ('21647304_2', 'Dataset C Pediactric')]
-keys_keep += keys_iin
+#keys_keep += keys_iin
 
 #tau activation
 keys_iin = [#('8928874_8',	'Dataset D fresh')#, ('8928874_8',	'Dataset D day 1'),\
@@ -158,15 +159,20 @@ atrial_model.run_sims_functions.plot2 = True #diff
 atrial_model.run_sims_functions.plot3 = False #tau
 
 if __name__ == '__main__':
-    chain = 1
-    burn_till =  20000
+    chain = 5
+    burn_till =  0#31_000
+    
+    filename = 'mcmc_OHaraRudy_wMark_INa_0924_1205'
+    #filename = 'mcmc_OHaraRudy_wMark_INa_0919_1832_sc'
+    #filename = 'mcmc_OHaraRudy_wMark_INa_0919_1832'
+    #filename = 'mcmc_OHaraRudy_wMark_INa_0831_1043_sc'
     
     #filename = './mcmc_Koval_0511_1609'
     #filename = 'mcmc_Koval_0601_1835'
     #filename = 'mcmc_OHaraRudy_wMark_INa_0528_1833'
     #filename = 'mcmc_OHaraRudy_wMark_INa_0606_0047'
     #filename = 'mcmc_OHaraRudy_wMark_INa_0627_1152'
-    filename = 'mcmc_OHaraRudy_wMark_INa_0702_1656'
+    #filename = 'mcmc_OHaraRudy_wMark_INa_0702_1656'
     
     base_dir = atrial_model.fit_data_dir+'/'
     with open(base_dir+'/'+filename+'_metadata.pickle','rb') as file:
@@ -183,6 +189,7 @@ if __name__ == '__main__':
     with Pool() as proc_pool:
 #        proc_pool = None
         temps = [0, 10, 20]
+        res_temp = []
         for temp in temps:
             b_temp = np.median(db['b_temp'][chain][burn_till:], axis=0)
             for i in range(db['b_temp'][chain].shape[1]):
@@ -190,21 +197,56 @@ if __name__ == '__main__':
                 f_sig = np.sum(trace > 0)/len(trace)
                 if not (f_sig < 0.05 or f_sig > 0.95):
                     b_temp[i] = 0
+            ## removing these helps reduce ill effects
+            #2,4
+            #b_temp[[2,4,10,12]] = 0
+            
+            b_temp = np.zeros_like(mp_locs, dtype=float)
+            b_temp[[1,4,10,14,21]] = -0.7/10
+            b_temp[[3,6,9,11,15,20,22]] = 0.4
+            b_temp[[3]] = -0.4
+            
+            # b_temp[[2]] = 0
+            # b_temp[[10]] = -0.2
+            # b_temp[0] = 0.2
+            
             intercept = np.median(db['model_param_mean'][chain][burn_till:], axis=0)
             b_temp_eff = b_temp*temp
             sub_mps = intercept + b_temp_eff
+#            sub_mps[18] = 1.7
 #            sub_mps[[6,8,10]] = intercept[[6,8,10]] - 2*b_temp_eff[[6,8,10]]
 #            sub_mps[0] = intercept[0]
 #            sub_mps[[1]] = intercept[[1]] - b_temp_eff[[1]]
 #            mp_locs = model_metadata.mp_locs
             
-            diff_fn = partial(calc_diff, model_parameters_full=model_params_initial,\
-                            mp_locs=mp_locs, sim_func=sim_fs, data=datas,\
-                                pool=proc_pool,ssq=True)
-                        
-            error = diff_fn(sub_mps, exp_params=exp_parameters, 
-                            keys=[key for key_group in keys_all for key in key_group])
-            print(error)
+            res_temp.append(calc_results(sub_mps, sim_funcs=sim_fs,\
+                                model_parameters_full=model_params_initial,\
+                                mp_locs=mp_locs, data=datas,error_fill=0,\
+                                pool=proc_pool))
+          
+        for key in keys_keep:
+            sl = slice(0, None)
+            if key == ('7971163_3', 'Dataset C'):
+                sl= slice(300, 350)
+            figname = exp_parameters.loc[key, 'Sim Group']
+            figname = figname if not pd.isna(figname) else 'Missing Label'
+            fig = plt.figure(figname + " temperature effects")
+            ax = fig.add_subplot(1,1,1)
+            for i, temp in enumerate(temps):
+                plt.plot(datas[key][sl,0], res_temp[i][key][sl], label=str(temp+17)+'°C')
+        
+        handles, labels = ax.get_legend_handles_labels()
+        fig = plt.figure('temp_params_legend')
+        ax = fig.add_subplot(1,1,1)
+        ax.yaxis.set_visible(False)
+        ax.xaxis.set_visible(False)
+        ax.spines['bottom'].set_visible(False)
+        ax.spines['left'].set_visible(False)
+        ax.legend(handles, labels, frameon=False)
+        
+        
+#setAxisSizePlots([(3,1.5)]*7+[(1,1)])
+        
 # vOld = np.arange(-150,50)
 # self = model(*model_params)
 

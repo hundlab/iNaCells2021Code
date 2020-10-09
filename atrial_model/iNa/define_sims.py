@@ -15,7 +15,8 @@ from ..run_sims import calc_diff
 from ..setup_sim import setup_sim
 from ..setup_sim_functions import setupSimExp, normalizeToBaseline, normalizeToFirst,\
     resort, minNorm_data, minNorm, minMaxNorm, func_norm, func_norm_data, minMaxNorm_data,\
-    normalizeToFirst_data, correctShift_data, inaCurvesFromData, flattenResult
+    normalizeToFirst_data, correctShift_data, inaCurvesFromData, flattenResult,\
+    signsqrt, signsqrt_data, chainProcess_data, addNoise_data
 from .model_setup import model, mp_locs, sub_mps, sub_mp_bounds, dt, run_fits
 #from .fit_current import calcExpTauInact, calcExpTauAct
 
@@ -73,28 +74,28 @@ if run_fits['Recovery']:
                                             'retOptions': retOptions},
                                 'hold_dur':50})
 
-    # recovery normalized to preprepulse
-    keys_iin = [\
-    ('7971163_6', 'Dataset -75'),\
-    ('7971163_6', 'Dataset -85'),\
-    ('7971163_6', 'Dataset -95'),\
-    ('7971163_6', 'Dataset -105'),\
-    ('7971163_6', 'Dataset -115'),\
-    ('7971163_6', 'Dataset -125'),\
-    ('7971163_6', 'Dataset -135')]
-    keys_all.append(keys_iin)
+    # # recovery normalized to preprepulse
+    # keys_iin = [\
+    # ('7971163_6', 'Dataset -75'),\
+    # ('7971163_6', 'Dataset -85'),\
+    # ('7971163_6', 'Dataset -95'),\
+    # ('7971163_6', 'Dataset -105'),\
+    # ('7971163_6', 'Dataset -115'),\
+    # ('7971163_6', 'Dataset -125'),\
+    # ('7971163_6', 'Dataset -135')]
+    # keys_all.append(keys_iin)
 
-    setupSimExp(sim_fs=sim_fs,\
-                datas=datas,\
-                data=data,\
-                exp_parameters=exp_parameters,\
-                keys_iin=keys_iin,\
-                model=model,\
-                process=partial(normalize2prepulse, pulse1=1, pulse2=5),\
-                dt=dt,\
-                post_process=None,
-                setup_sim_args={'sim_args':{'solver': solver,
-                                            'retOptions': retOptions}})
+    # setupSimExp(sim_fs=sim_fs,\
+    #             datas=datas,\
+    #             data=data,\
+    #             exp_parameters=exp_parameters,\
+    #             keys_iin=keys_iin,\
+    #             model=model,\
+    #             process=partial(normalize2prepulse, pulse1=1, pulse2=5),\
+    #             dt=dt,\
+    #             post_process=None,
+    #             setup_sim_args={'sim_args':{'solver': solver,
+    #                                         'retOptions': retOptions}})
 
 
 
@@ -138,24 +139,24 @@ if run_fits['Inactivation']:
                                             'retOptions': retOptions}})
     
 
-    # inactivation normalized to first
-    keys_iin = [('7971163_5',	'Dataset A -65'), ('7971163_5',	'Dataset A -75'),\
-                ('7971163_5',	'Dataset A -85'), ('7971163_5',	'Dataset A -95'),\
-                ('7971163_5',	'Dataset A -105')]
-    keys_all.append(keys_iin)
+    # # inactivation normalized to first
+    # keys_iin = [('7971163_5',	'Dataset A -65'), ('7971163_5',	'Dataset A -75'),\
+    #             ('7971163_5',	'Dataset A -85'), ('7971163_5',	'Dataset A -95'),\
+    #             ('7971163_5',	'Dataset A -105')]
+    # keys_all.append(keys_iin)
 
-    setupSimExp(sim_fs=sim_fs,\
-                datas=datas,\
-                data=data,\
-                exp_parameters=exp_parameters,\
-                keys_iin=keys_iin,\
-                model=model,\
-                process=partial(peakCurr, durn=3),\
-                dt=dt,\
-                post_process=normalizeToFirst,
-                process_data=normalizeToFirst_data,
-                setup_sim_args={'sim_args':{'solver': solver,
-                                            'retOptions': retOptions}})
+    # setupSimExp(sim_fs=sim_fs,\
+    #             datas=datas,\
+    #             data=data,\
+    #             exp_parameters=exp_parameters,\
+    #             keys_iin=keys_iin,\
+    #             model=model,\
+    #             process=partial(peakCurr, durn=3),\
+    #             dt=dt,\
+    #             post_process=normalizeToFirst,
+    #             process_data=normalizeToFirst_data,
+    #             setup_sim_args={'sim_args':{'solver': solver,
+    #                                         'retOptions': retOptions}})
 
     # idealized current traces
     keys_mfs = [
@@ -197,11 +198,12 @@ if run_fits['Inactivation']:
         curve_data = inaCurvesFromData(times-times[0], data, tau_keys, fs_prop=0.9)
         sim_f.solver = copy.deepcopy(sim_f.solver)
         sim_f.solver.keywords['t_eval'] = times
-        
+        new_data = np.array([np.tile(times, (len(voltage_vals),))
+                                     , curve_data.flatten()]).T
+        new_data = addNoise_data(new_data)
 #        exp_parameters.loc[tau_m_key,:] = key_exp_p
         sim_fs[tau_m_key] = sim_f
-        datas[tau_m_key] = np.array([np.tile(times, (len(voltage_vals),))
-                                     , curve_data.flatten()]).T
+        datas[tau_m_key] = new_data
 #        keys_iin.append(tau_m_key)
         
             
@@ -318,7 +320,10 @@ if run_fits['Activation']:
     
     process_data = partial(correctShift_data, exp_parameters=exp_parameters,
                            model=model)#None
-    post_process = None
+    process_data = partial(chainProcess_data, new_process=signsqrt_data, 
+                           prev_process=process_data)
+    
+    post_process = signsqrt
     if args.normalize_all:
         process_data = minNorm_data
         post_process = minNorm
