@@ -28,31 +28,33 @@ from functools import partial
 import pickle
 
 
+#groups = ['Adults', 'Pediatric', 'fresh', 'day 1', 'day 3', 'day 5', ]
+
 keys_keep = []
 
 #------------------------------------------------------------------------------
 #------------------------------------------------------------------------------
 
 # # #iv curve
-#keys_iin = [
+keys_iin = [
 # ('1323431_1',	'Dataset B'), ('1323431_3',	'Dataset A 2'),
 # ('1323431_3',	'Dataset A 20'), ('1323431_3',	'Dataset A 5'),
 # ('1323431_4',	'Dataset B Control'),
 # #('7971163_1', 'Dataset'),
  
-# ('8928874_7',	'Dataset C day 1'), ('8928874_7',	'Dataset C day 3'),
-# ('8928874_7',	'Dataset C day 5'), ('8928874_7',	'Dataset C fresh'),
-# ('21647304_1',	'Dataset B Adults'), ###('21647304_1', 'Dataset B Pediatrics'),
-# ('12890054_3', 'Dataset C Control'), ('12890054_3',	'Dataset D Control'),
-# ('12890054_5', 'Dataset C Control'), ###('12890054_5',	'Dataset D Control'),
-# ('23341576_2', 'Dataset C Control')
-#]
-#keys_keep += keys_iin
+# ('8928874_7',	'Dataset C day 1')#, ('8928874_7',	'Dataset C day 3'),
+ #('8928874_7',	'Dataset C day 5'), ('8928874_7',	'Dataset C fresh'),
+ #('21647304_1',	'Dataset B Adults'), ###('21647304_1', 'Dataset B Pediatrics'),
+ #('12890054_3', 'Dataset C Control'), ('12890054_3',	'Dataset D Control'),
+ #('12890054_5', 'Dataset C Control'), ###('12890054_5',	'Dataset D Control'),
+ #('23341576_2', 'Dataset C Control')
+]
+keys_keep += keys_iin
 
 
 ##activation normalized to driving force
 keys_iin = [
-            ('1323431_2',	'Dataset'),\
+#            ('1323431_2',	'Dataset'),\
 #            ('8928874_7',	'Dataset D fresh'), ('8928874_7',	'Dataset D day 1'),\
 #            ('8928874_7',	'Dataset D day 3'), ('8928874_7',	'Dataset D day 5'),\
 #            ('21647304_3',	'Dataset A Adults'), ('21647304_3',	'Dataset A Pediatrics')
@@ -63,13 +65,13 @@ keys_keep += keys_iin
 
 
 # # I2/I1 Recovery
-# keys_iin = [('1323431_8', 'Dataset A -140'), ('1323431_8',	'Dataset A -120'),\
+keys_iin = [#('1323431_8', 'Dataset A -140'), ('1323431_8',	'Dataset A -120'),\
 #               ('1323431_8',	'Dataset A -100'),\
-#             ('21647304_3',	'Dataset C Adults'), ('21647304_3',	'Dataset C Pediatrics'),\
-#             ('8928874_9', 'Dataset fresh'), ('8928874_9', 'Dataset day 1'),\
+#             ('21647304_3',	'Dataset C Adults')#, ('21647304_3',	'Dataset C Pediatrics'),\
+              ('8928874_9', 'Dataset fresh')#, ('8928874_9', 'Dataset day 1'),\
 #             ('8928874_9', 'Dataset day 3'), ('8928874_9', 'Dataset day 5')
-# ]
-# keys_keep += keys_iin
+]
+keys_keep += keys_iin
 
 
 # #recovery normalized to preprepulse
@@ -88,16 +90,16 @@ keys_keep += keys_iin
 
 
 # #inactivation normalized to no prepulse
-#keys_iin = [
+keys_iin = [
 #                   ('7971163_4', 'Dataset 256ms'), 
 #('7971163_4', 'Dataset 512ms'),\
 
-#               ('8928874_8',	'Dataset C fresh'), ('8928874_8',	'Dataset C day 1'),\
+#               ('8928874_8',	'Dataset C fresh')#, ('8928874_8',	'Dataset C day 1'),\
 #               ('8928874_8',	'Dataset C day 3'), ('8928874_8',	'Dataset C day 5'),
 # ('21647304_3',	'Dataset B Adults'), ('21647304_3',	'Dataset B Pediatrics')
-#]
+]
 # # #
-#keys_keep += keys_iin
+keys_keep += keys_iin
 
 
 # #inactivation normalized to first
@@ -109,12 +111,13 @@ keys_keep += keys_iin
 
 
 # #idealized current traces
-# keys_iin = [('21647304_2', 'Dataset B Adults'), ('21647304_2', 'Dataset B Pediactric'),
-#               ('8928874_8',	'Dataset D fresh'), ('8928874_8',	'Dataset D day 1'),\
-#               ('8928874_8',	'Dataset D day 3'), ('8928874_8',	'Dataset D day 5'),
+keys_iin = [#('21647304_2', 'Dataset B Adults'), ('21647304_2', 'Dataset B Pediactric'),
+#              ('8928874_8',	'Dataset D fresh'), ('8928874_8',	'Dataset D day 1'),\
+#    ('8928874_8',	'Dataset D day 3'),
+#                ('8928874_8',	'Dataset D day 5'),
 #               ('7971163_3',	'Dataset C')
-# ]
-# keys_keep += keys_iin
+]
+keys_keep += keys_iin
 
 
 
@@ -160,7 +163,7 @@ keys_keep = list(keys_keep)
 
 #------------------------------------------------------------------------------
 #------------------------------------------------------------------------------
-atrial_model.run_sims_functions.plot1 = False #sim
+atrial_model.run_sims_functions.plot1 = True #sim
 atrial_model.run_sims_functions.plot2 = True #diff
 atrial_model.run_sims_functions.plot3 = False #tau
 
@@ -239,29 +242,52 @@ if __name__ == '__main__':
 #        expected_err += res.fun
 #    print(expected_err)
 #    sub_mps = res.x
-    sub_mps = np.array([ 0.99853418, -3.02850451, -0.52426541, -5.30894684,  0.19784067,
-       -1.        ,  7.41353664,  2.23632115, -0.62730371,  8.36644525,
-       -3.06243539,  7.67223533, -0.52998804, -1.52531707, -1.6720276 ,
-        1.90942851,  0.91702488, -2.87504327,  1.16907694, -0.90701965,
-        6.8550732 , -3.11420156,  9.01382321, -0.20200651,  0.27550289])
+    # sub_mps = np.array([ 0.99853418, -3.02850451, -0.52426541, -5.30894684,  0.19784067,
+    #    -1.        ,  7.41353664,  2.23632115, -0.62730371,  8.36644525,
+    #    -3.06243539,  7.67223533, -0.52998804, -1.52531707, -1.6720276 ,
+    #     1.90942851,  0.91702488, -2.87504327,  1.16907694, -0.90701965,
+    #     6.8550732 , -3.11420156,  9.01382321, -0.20200651,  0.27550289])
     
-    sub_mps[5] = -2
+    #sub_mps[5] = -2
     #sub_mps[5] = -4
     #sub_mps[13] = 4
     
-    sub_mps[4] = 0
+    #sub_mps[4] = 0
     #sub_mps[5] = -0.3
     #sub_mps[10] = 0
     
+    #sub_mps[[8,9]] = [-0.5,-28]
+#    shift = 25
+    # sub_mps = np.array([ 3.09849539, -1.42216837,  0.49229459, -2.3151882+shift ,  1.1601244 ,
+    #    -0.84186075,  0.02376837,  0.41865553, -1.01352075, -2.20848693-shift,
+    #    -0.32747158, -1.36456941,  0.41532375,  0.72145421, -0.6569219 ,
+    #     0.17191365,  0.74302502, -1.07247888,  1.39859451, -0.67806507,
+    #     0.1872425-shift ,  3.71160024,  3.5079484 ,  2.28888796,  0.24868646])
+    
+#    sub_mps = {key: model_param[-1,i,:] for i,key in enumerate(sim_names) if key in keys_iin}
+#    for key in sub_mps:
+#        sub_mps[key][13] = 0
+#    sub_mps[13] = 0
+#    sub_mps[0] = 1.5
+    
     with Pool() as proc_pool:
         proc_pool = None
-        diff_fn = partial(calc_diff, model_parameters_full=model_params_initial,\
-                        mp_locs=mp_locs, sim_func=sim_fs, data=datas,\
+        diff_fn = partial(calc_results, model_parameters_full=model_params_initial,\
+                        mp_locs=mp_locs, sim_funcs=sim_fs, data=datas,\
                            pool=proc_pool)
         #diff_fn(sub_mps, exp_params=exp_parameters, 
                         #keys=keys_keep)
-        res = diff_fn(sub_mps, exp_params=exp_parameters)
-        print(res)
+        for i in [5]:#range(44):
+            sub_mps = np.copy(model_param[-1,i,:])
+#            sub_mps[18] = 1.7
+#            sub_mps[21] = -1
+#            sub_mps[0] = 1
+            res = diff_fn(sub_mps, exp_params=exp_parameters)
+            for key in res:
+                plt.figure(str(key))
+                plt.scatter(datas[key][:,0], datas[key][:,1])
+                plt.plot(datas[key][:,0], res[key], label=str(i))
+        #print(res)
 # vOld = np.arange(-150,50)
 # self = model(*model_params)
 

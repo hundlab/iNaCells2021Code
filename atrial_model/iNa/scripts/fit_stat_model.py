@@ -25,6 +25,7 @@ from atrial_model.parse_cmd_args import args
 import atrial_model.run_sims_functions
 from atrial_model.run_sims import calc_results, SimResults
 from atrial_model.iNa.define_sims import sim_fs, datas, keys_all, exp_parameters
+#from atrial_model.iNa.stat_model import make_model
 from atrial_model.iNa.stat_model import make_model
 from atrial_model.iNa.model_setup import model_params_initial, mp_locs, sub_mps, model
 from atrial_model.pymc2step import AdaptiveSDMetropolis
@@ -109,33 +110,36 @@ if __name__ == '__main__':
         #                                cov=cov,
         #                                delay=500, interval=400)
         
-        node = pymc_model.get_node('model_param_mean')
-        sd = np.load(args.out_dir+'/model_param_mean.npy')
-        pymc_model.use_step_method(pymc.Metropolis, node,
-                             proposal_sd=sd)
         
-        node = pymc_model.get_node('b_temp')
-        sd = np.load(args.out_dir+'/b_temp.npy')
-        pymc_model.use_step_method(pymc.Metropolis, node,
-                             proposal_sd=sd)
+        # node = pymc_model.get_node('model_param_mean')
+        # sd = np.load(args.out_dir+'/model_param_mean.npy')
+        # pymc_model.use_step_method(pymc.Metropolis, node,
+        #                      proposal_sd=sd)
+        
+        # node = pymc_model.get_node('b_temp')
+        # sd = np.load(args.out_dir+'/b_temp.npy')
+        # pymc_model.use_step_method(pymc.Metropolis, node,
+        #                      proposal_sd=sd)
 
 
         node = pymc_model.get_node('model_param')
         sd = np.load(args.out_dir+'/model_param.npy')#0.01*np.ones(node.value.shape)
         pymc_model.use_step_method(AdaptiveSDMetropolis, node,
-                             proposal_sd=sd,
-                             delay=100, interval=200)
+                              proposal_sd=sd,
+                              delay=100, interval=200)
 
         
-        node = pymc_model.get_node('model_param_tau')
-        sd = np.load(args.out_dir+'/model_param_tau.npy')
-        pymc_model.use_step_method(pymc.Metropolis, node,
-                                   proposal_sd=sd)
+        # node = pymc_model.get_node('model_param_tau')
+        # sd = np.load(args.out_dir+'/model_param_tau.npy')
+        # pymc_model.use_step_method(pymc.Metropolis, node,
+        #                            proposal_sd=sd)
         
-        node = pymc_model.get_node('error_tau')
-        sd = np.load(args.out_dir+'/error_tau.npy')
-        pymc_model.use_step_method(pymc.Metropolis, node,
-                                   proposal_sd=sd)
+        # node = pymc_model.get_node('error_tau')
+        # sd = np.load(args.out_dir+'/error_tau.npy')
+        # pymc_model.use_step_method(pymc.Metropolis, node,
+        #                            proposal_sd=sd)
+        
+        
         
         # adaptive_nodes = ['model_param', 'b_temp','model_param_mean']
         # node_scales = [0.0187618294, 0.00531441, 0.0215233]
@@ -153,7 +157,7 @@ if __name__ == '__main__':
             sample_timer.start()
         
         pymc_model.sample(iter=100_000, burn=0, thin=1, tune_throughout=True, 
-                          save_interval=100, tune_interval=300)#, burn_till_tuned=True)
+                          save_interval=100, tune_interval=600)#, burn_till_tuned=True)
         pymc_model.db.close()
         
         if not args.max_time is None:

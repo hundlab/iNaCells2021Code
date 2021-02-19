@@ -187,6 +187,8 @@ class AdaptiveSDMetropolis(StepMethod):
             self.stochastic.value = new_single
             logp_p = self.logp_plus_loglike
             
+            import pdb
+            pdb.set_trace()
             # Evaluate acceptance ratio
             if log(random()) <= logp_p - logp:
                 accepted_proposal[i] = new_value[i]
@@ -325,16 +327,16 @@ class AdaptiveSDMetropolis(StepMethod):
 
 
     def updateproposal_sd(self):
-        chain = np.asarray(self._trace)
-        pre_proposal_sd = self.proposal_sd
-        self.proposal_sd = 1/4*np.std(chain, axis=0)+ 3/4*pre_proposal_sd
-        zero_mask = self.proposal_sd == 0
-        self.proposal_sd[zero_mask] = 0.1*pre_proposal_sd[zero_mask]
+        #chain = np.asarray(self._trace)
+        #pre_proposal_sd = self.proposal_sd
+        #self.proposal_sd = 1/4*np.std(chain, axis=0)+ 3/4*pre_proposal_sd
+        #zero_mask = self.proposal_sd == 0
+        #self.proposal_sd[zero_mask] = 0.1*pre_proposal_sd[zero_mask]
         
-        # avg_change = np.mean(self.proposal_sd/pre_proposal_sd)
-        # avg_change /= 2
+        ## avg_change = np.mean(self.proposal_sd/pre_proposal_sd)
+        ## avg_change /= 2
         
-        # self.adaptive_scale_factor /= avg_change
+        ## self.adaptive_scale_factor /= avg_change
         
         acc_rate = self.accepted / (self.accepted + self.rejected)
         

@@ -16,7 +16,7 @@ from ..setup_sim import setup_sim
 from ..setup_sim_functions import setupSimExp, normalizeToBaseline, normalizeToFirst,\
     resort, minNorm_data, minNorm, minMaxNorm, func_norm, func_norm_data, minMaxNorm_data,\
     normalizeToFirst_data, correctShift_data, inaCurvesFromData, flattenResult,\
-    signsqrt, signsqrt_data, chainProcess_data, addNoise_data
+    signsqrt, signsqrt_data, chainProcess_data, addNoise_data, normalizeToMax, normalizeToMax_data
 from .model_setup import model, mp_locs, sub_mps, sub_mp_bounds, dt, run_fits
 #from .fit_current import calcExpTauInact, calcExpTauAct
 
@@ -47,8 +47,7 @@ datas = {}
 keys_all = []
 
 solver = partial(integrate.solve_ivp, method='BDF')
-retOptions = {'G': False, 'INa': True, 'INaL': True,\
-              'Open': True, 'RevPot': True}
+retOptions = {'G': False}
 
 
 if run_fits['Recovery']:
@@ -186,10 +185,16 @@ if run_fits['Inactivation']:
                                   'dt' : dt,
                                   'process' : process,
                                   'post_process' : flattenResult}}
+    
     for tau_keys in keys_mfs:
         tau_m_key = tau_keys[0]
         key_exp_p = exp_parameters.loc[tau_m_key]
         voltage_vals = np.round(data[tau_m_key][:,0])
+        if len(tau_keys) == 3:
+            setup_sim_args['sim_args']['retOptions'] = retOptions
+        else:
+            setup_sim_args['sim_args']['retOptions'] = {'G': False, 'sh': False}
+            
         voltages, durs, sim_f = setup_sim(model, voltage_vals[:,None], key_exp_p, **setup_sim_args)
                     
         startt = durs[0][0]
@@ -300,11 +305,10 @@ if run_fits['Activation']:
                 model=model,
                 process=peakCurr,
                 dt=dt,
-                post_process=minMaxNorm,
-                process_data=minMaxNorm_data,
+                post_process=normalizeToMax,
+                process_data=normalizeToMax_data,
                 setup_sim_args={'sim_args':{'retOptions': 
-                                {'G': False, 'INa': True, 'INaL': False,
-                                 'Open': True, 'RevPot': False},
+                                {'G': False, 'RevPot': False},
                                 'solver': solver}})#'ret': [False,True,False]
 
     ## iv curve

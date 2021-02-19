@@ -62,6 +62,19 @@ def load_data_parameters(filename, sheet_name, data_root = args.data_root, data 
 
     return data_parameters, sub_data
 
+def extract_figures(fig_names, data=all_data):
+    sub_data = {}
+    for idx in fig_names:
+        datasets = data[idx]['datasetColl']
+        sub_fig = {}
+        for dataset in datasets:
+            fig_data = [entry['value'] for entry in dataset['data']]
+            temp_data = np.array(fig_data)
+            order = np.argsort(temp_data[:,0])
+            sub_fig[dataset['name']] = temp_data[order,:]
+        sub_data[idx] = sub_fig
+    return sub_data
+
 def extract_sub_data(data_keys, data=all_data):
     #extract sub_data
     sub_data = {}

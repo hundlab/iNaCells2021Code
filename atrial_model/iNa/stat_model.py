@@ -21,6 +21,7 @@ def make_model(run_biophysical, key_groups, datas,
     mu = np.zeros_like(mp_locs)
     tau = 0.001* np.ones_like(mp_locs)
     mu[18] = 1.7
+    model_p_int = mu
     tau[18] = 50
 #    model_bounds = np.array(model.param_bounds)
     if 'model_param_intercept' in start:
@@ -69,6 +70,8 @@ def make_model(run_biophysical, key_groups, datas,
         mu[18] = 0
         tau[18] = 50
         
+        b_temp_mu = mu
+        
         if 'b_temp' not in start:
             start['b_temp'] = np.zeros_like(mp_locs)
         b_temp = pymc.Normal("b_temp",
@@ -84,7 +87,8 @@ def make_model(run_biophysical, key_groups, datas,
         mu = model_param_mean[model_param_index] + b_temp[model_param_index]*temperature_arr
 
         if 'model_param' not in start:
-            start['model_param'] = None#np.zeros_like(mu)
+            start['model_param'] = model_p_int[model_param_index] +\
+                b_temp_mu[model_param_index]*temperature_arr#np.zeros(len())
 
         # model parameter  ~ N
         model_param_sim =  pymc.Normal("model_param",

@@ -10,6 +10,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 from collections import deque
+import copy
 
 from . import run_sims_functions
 from .run_sims_functions import isList
@@ -155,7 +156,7 @@ class SimRunner():
             for sub_sim_pos in range(self.voltages.shape[0]):
                 run_model = self.model(*model_args, **model_kwargs)
                 if not self.retOptions is None:
-                    run_model.retOptions = self.retOptions
+                    run_model.retOptions.update(self.retOptions)
                 
                 solveAProc_args = (self.durs, self.voltages, \
                                    run_model, self.solver, self.dt, \
@@ -264,7 +265,10 @@ class SimResults():
                 res += list(results[key])
             else:
                 res.append(results[key])
-        res = np.array(res)
+        if flatten:
+            res = np.array(res)
+        else:
+            res = copy.deepcopy(res)
         return res
     
     def update_cache(self, model_parameters, results):

@@ -159,13 +159,15 @@ atrial_model.run_sims_functions.plot2 = True #diff
 atrial_model.run_sims_functions.plot3 = False #tau
 
 if __name__ == '__main__':
-    chain = 5
-    burn_till =  0#31_000
+    chain = 6
+    burn_till =  500#31_000
     
     filename = 'mcmc_OHaraRudy_wMark_INa_0924_1205'
     #filename = 'mcmc_OHaraRudy_wMark_INa_0919_1832_sc'
     #filename = 'mcmc_OHaraRudy_wMark_INa_0919_1832'
     #filename = 'mcmc_OHaraRudy_wMark_INa_0831_1043_sc'
+    
+    filename = 'mcmc_OHaraRudy_wMark_INa_1012_1149'
     
     #filename = './mcmc_Koval_0511_1609'
     #filename = 'mcmc_Koval_0601_1835'
@@ -201,10 +203,10 @@ if __name__ == '__main__':
             #2,4
             #b_temp[[2,4,10,12]] = 0
             
-            b_temp = np.zeros_like(mp_locs, dtype=float)
-            b_temp[[1,4,10,14,21]] = -0.7/10
-            b_temp[[3,6,9,11,15,20,22]] = 0.4
-            b_temp[[3]] = -0.4
+            # b_temp = np.zeros_like(mp_locs, dtype=float)
+            # b_temp[[1,4,10,14,21]] = -0.7/10
+            # b_temp[[3,6,9,11,15,20,22]] = 0.4
+            # b_temp[[3]] = -0.4
             
             # b_temp[[2]] = 0
             # b_temp[[10]] = -0.2

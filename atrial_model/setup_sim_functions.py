@@ -123,6 +123,14 @@ def normalizeToFirst_data(data, **kwargs):
     data[:,1] = data[:,1]/data[0,1]
     return data
 
+def normalizeToMax(vals, **kwargs):
+    return np.abs(vals)/np.abs(vals).max()
+
+def normalizeToMax_data(data, **kwargs):
+    data = np.copy(data)
+    data[:,1] = data[:,1]/data[:,1].max()
+    return data
+
 def minMaxNorm(vals, feature_range=(0, 1), **kwargs):
     return minmax_scale(vals, feature_range=feature_range)
 
@@ -196,7 +204,9 @@ def chainProcess_data(data, new_process, prev_process, **kwargs):
     data = new_process(data, **kwargs)
     return data
 
-def addNoise_data(data, sd=0.02):
+def addNoise_data(data, sdFact=2e5):
+    sd = data.shape[0] / sdFact
+    #print(sd, data.shape[0])
     data = np.copy(data)
     data[:,1] = np.random.normal(loc=data[:,1], scale=sd)
     return data

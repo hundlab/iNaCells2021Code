@@ -34,8 +34,7 @@ class SodiumChannelModel():
 
         self._recArray = []
 
-        self.retOptions = {'G': True, 'INa': True, 'INaL': True,\
-                                 'Open': True, 'RevPot': True}
+        self.retOptions = retOptions
         self.lastVal = None
         self.memoize = True
         
@@ -458,13 +457,18 @@ class OHaraRudy_wMark_INa(SodiumChannelModel):
         self.tj_shift -= tj_cshift #shift correction
         self.tj_max *= tj_cmax #height correction
                 
+        retOptions = {'G': True, 'INa': True, 'INaL': True,\
+                                 'Open': True, 'RevPot': True,
+                                 'fh': True, 'sh': True}
+        
         super().__init__(TEMP=TEMP, naO=naO, naI=naI,
                          recArrayNames = ["m",
                                        "hf","jf","if","i2f",
                                        "hs","js","is","i2s"],
                          state_vals = [0,
                                      1,0,0,0,
-                                     1,0,0,0])
+                                     1,0,0,0],
+                         retOptions=retOptions)
 
         self.lastddt = None
             
@@ -625,15 +629,22 @@ class OHaraRudy_wMark_INa(SodiumChannelModel):
         elif vals.shape[0] != self.num_states and vals.shape[-1] == self.num_states:
             vals = vals.T
             
-        m, hf,jf,i1f,i2f, hs,js,i1s,i2s = vals
+        m, hf,jf,i1f,i2f, hs,js,i1s,i2s = np.clip(vals, a_min=0, a_max=1)
 
         if setRecArray:
             self._recArray += list(np.copy(vals.T))
         
         ena = self.getRevPot()
         
-        Ahf = self.Ahf_mult;
-        Ahs = 1.0 - Ahf;
+        if self.retOptions['fh'] and self.retOptions['sh']:
+            Ahf = self.Ahf_mult;
+            Ahs = 1.0 - Ahf;
+        elif self.retOptions['fh']:
+            Ahf = 1
+            Ahs = 1.0 - Ahf;
+        elif self.retOptions['sh']:
+            Ahf = 0
+            Ahs = 1.0 - Ahf;
         
         h = Ahf*hf + Ahs*hs;
 #        hp = Ahf * hf + Ahs *hsp;
