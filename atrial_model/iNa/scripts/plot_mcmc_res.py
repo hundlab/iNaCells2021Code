@@ -35,18 +35,33 @@ plot_sim = False
 plot_regressions = False
 plot_pymc_diag = False
 
-#from SaveSAP import savePlots,setAxisSizePlots
-#sizes = {'deviance': (4, 4), 'deviance_zoomed': (4, 4), 'model_param_mean': (4, 4), 'b_temp': (4, 4), 'model_param_tau': (4, 4), 'model_params_legend': (2, 6), 'error_tau': (4, 4), 'sim_groups_legend': (2, 6), 'GNaFactor': (6, 2), 'baselineFactor': (6, 2), 'mss_tauFactor': (6, 2), 'mss_shiftFactor': (6, 2), 'tm_maxFactor': (6, 2), 'tm_tau1Factor': (6, 2), 'tm_shiftFactor': (6, 2), 'tm_tau2Factor': (6, 2), 'hss_tauFactor': (6, 2), 'hss_shiftFactor': (6, 2), 'thf_maxFactor': (6, 2), 'thf_shiftFactor': (6, 2), 'thf_tau1Factor': (6, 2), 'thf_tau2Factor': (6, 2), 'ths_maxFactor': (6, 2), 'ths_shiftFactor': (6, 2), 'ths_tau1Factor': (6, 2), 'ths_tau2Factor': (6, 2), 'Ahf_multFactor': (6, 2), 'jss_tauFactor': (6, 2), 'jss_shiftFactor': (6, 2), 'tj_maxFactor': (6, 2), 'tj_shiftFactor': (6, 2), 'tj_tau2Factor': (6, 2), 'tj_tau1Factor': (6, 2)}
+from SaveSAP import savePlots,setAxisSizePlots
+sizes = {'logp': (3.5, 3.5), 'model_param_intercept': (3.5, 3.5), 'b_temp': (3.5, 3.5),
+         'paper_eff Sakakibara et al': (3.5, 3.5), 'paper_eff Cai et al': (3.5,3.5),
+         'paper_eff Feng et al': (3.5, 3.5), 'paper_eff Schneider et al': (3.5, 3.5),
+         'paper_eff Lalevée et al': (3.5, 3.5), 'paper_eff Wettwer et al': (3.5, 3.5),
+         'paper_eff_sd': (3.5, 3.5), 'model_param_sd': (3.5, 3.5), 
+         'model_params_legend': (2, 6), 'error_sd': (3.5, 3.5), 'sim_groups_legend': (2, 6), 
+         'GNaFactor': (3.5, 2), 'baselineFactor': (3.5, 2), 'mss_tauFactor': (3.5, 2),
+         'mss_shiftFactor': (3.5, 2), 'tm_maxFactor': (3.5, 2), 'tm_tau1Factor': (3.5, 2),
+         'tm_shiftFactor': (3.5, 2), 'tm_tau2Factor': (3.5, 2), 'hss_tauFactor': (3.5, 2),
+         'hss_shiftFactor': (3.5, 2), 'thf_maxFactor': (3.5, 2), 'thf_shiftFactor': (3.5, 2),
+         'thf_tau1Factor': (3.5, 2), 'thf_tau2Factor': (3.5, 2), 'ths_maxFactor': (3.5, 2),
+         'ths_shiftFactor': (3.5, 2), 'ths_tau1Factor': (3.5, 2), 'ths_tau2Factor': (3.5, 2),
+         'Ahf_multFactor': (3.5, 2), 'jss_tauFactor': (3.5, 2), 'jss_shiftFactor': (3.5, 2),
+         'tj_maxFactor': (3.5, 2), 'tj_shiftFactor': (3.5, 2), 'tj_tau2Factor': (3.5, 2),
+         'tj_tau1Factor': (3.5, 2),
+         'model_param_corr': (6,6)}
 #setAxisSizePlots(sizes)
-#savePlots('R:/Hund/DanielGratz/atrial_model/plots/latest/OHaraRudy_wMark/', ftype='svg')
-#setAxisSizePlots([(4,4)]*40)
+#savePlots('R:/Hund/DanielGratz/atrial_model/plots/latest/plots/', ftype='svg')
+#setAxisSizePlots([(3.5,3.5)]*40)
 #setAxisSizePlots((3,3))
 
 atrial_model.run_sims_functions.plot1 = False #sim
 atrial_model.run_sims_functions.plot2 = False #diff
 atrial_model.run_sims_functions.plot3 = False #tau
 
-burn_till = 1000#500#800#40000#34_000#2500#31_000 #35000
+burn_till = 2000#500#800#40000#34_000#2500#31_000 #35000
 chain = 0#7
 #burn_till = 60000
 stack = False
@@ -89,6 +104,7 @@ if __name__ == '__main__':
 #    filename = 'mcmc_OHaraRudy_wMark_INa_0129_1549'
     filename = 'mcmc_OHaraRudy_wMark_INa_0129_1601'
     filename = 'mcmc_OHaraRudy_wMark_INa_0215_0722'
+#    filename = 'mcmc_OHaraRudy_wMark_INa_0319_1706'
 #    filename = 'test'
 
 
@@ -224,6 +240,13 @@ if __name__ == '__main__':
         c_by_mp = [paultcolors[c_scheme][i] for i in c_by_s_type]
         strokes = no_stroke#stroke_by_s_type
     
+        trace = 'logp'
+        trace_data = db.warmup_sample_stats['lp'][0]
+        fig = plt.figure(trace)
+        ax = [fig.add_subplot(1,1,1)]
+        ax[0].plot(trace_data[burn_till:], c=c_by_mp[0])
+   
+    
 #         trace = 'deviance'
 #         trace_data = db[trace][chain]
 #         if stack:
@@ -260,6 +283,7 @@ if __name__ == '__main__':
             upper = np.max(trace_data[burn_till:,i])
             values = np.linspace(lower, upper, num=100)
             ax[1].plot(density(values), values, label=model_param_names[i], c=c_by_mp[i])
+            ax[1].set_xlim(right=20)
 #            color = hist[0].get_facecolor()
 #            ax[0].axhline(bounds[i, 0]+i/100, c=color, label=model_param_names[i]+'_lower')
 #            ax[0].axhline(bounds[i, 1]+i/100, c=color, label=model_param_names[i]+'_upper')
@@ -283,6 +307,7 @@ if __name__ == '__main__':
             upper = np.max(trace_data[burn_till:,i])
             values = np.linspace(lower, upper, num=100)
             ax[1].plot(density(values), values, label=model_param_names[i], c=c_by_mp[i])
+            ax[1].set_xlim(right=60)
             #ax[1].hist(trace_data[:,i], orientation='horizontal', label=model_param_names[i])
         handles, labels = ax[0].get_legend_handles_labels()
 #        ax[1].legend(handles, labels, frameon=False)
@@ -306,6 +331,7 @@ if __name__ == '__main__':
                 upper = np.max(trace_data[burn_till:,paper_idx,i])
                 values = np.linspace(lower, upper, num=100)
                 ax[1].plot(density(values), values, label=model_param_names[i], c=c_by_mp[i])
+                ax[1].set_xlim(right=10)
     #            color = hist[0].get_facecolor()
     #            ax[0].axhline(bounds[i, 0]+i/100, c=color, label=model_param_names[i]+'_lower')
     #            ax[0].axhline(bounds[i, 1]+i/100, c=color, label=model_param_names[i]+'_upper')
@@ -330,6 +356,7 @@ if __name__ == '__main__':
             upper = np.max(trace_data[burn_till:,i])
             values = np.linspace(lower, upper, num=100)
             ax[1].plot(density(values), values, label=model_param_names[i], c=c_by_mp[i])
+            ax[1].set_xlim(right=60)
 #            color = hist[0].get_facecolor()
 #            ax[0].axhline(bounds[i, 0]+i/100, c=color, label=model_param_names[i]+'_lower')
 #            ax[0].axhline(bounds[i, 1]+i/100, c=color, label=model_param_names[i]+'_upper')
@@ -352,6 +379,7 @@ if __name__ == '__main__':
             upper = np.max(trace_data[burn_till:,i])
             values = np.linspace(lower, upper, num=100)
             ax[1].plot(density(values), values, label=model_param_names[i], c=c_by_mp[i])
+            ax[1].set_xlim(right=90)
 #            ax[1].hist(trace_sigma, orientation='horizontal', label=model_param_names[i])
         handles, labels = ax[0].get_legend_handles_labels()
 #        ax[1].legend(handles, labels, frameon=False)
@@ -439,13 +467,14 @@ if __name__ == '__main__':
                 sharex = ax[i-1,j] if i-1 > 0 else None
                 sharey = ax[i,j-1] if j-1 > 0 else None
                 ax[i,j] = fig.add_subplot(*ax.shape,
-                i*ax.shape[0]+j+1)#, 
+                i*ax.shape[0]+j+1, 
                 #sharex=sharex, 
-                #sharey=sharey)
+                sharey=sharey)
                 ax[i,j].xaxis.set_visible(False)
                 ax[i,j].spines['bottom'].set_visible(False)
                 ax[i,j].yaxis.set_visible(False)
                 ax[i,j].spines['left'].set_visible(False)
+                ax[i,j].set_ylim(top=1, bottom=-1)
                 if i <= j:
                     ax[i,j].imshow([[avgtrace[i,j]]], vmin=-1, vmax=1, cmap='bwr')
                     #ax[i,j].plot(trace_data[burn_till:, i,j])
@@ -455,7 +484,7 @@ if __name__ == '__main__':
                     upper = np.max(trace_data[burn_till:,i,j])
                     values = np.linspace(lower, upper, num=100)
                     ax[i,j].plot(density(values), values)
-                    ax[i,j].axhline(c='black')
+                    ax[i,j].axhline(c='black', alpha=0.5)
         #for i in range(len(mp_locs)):
         #    ax[i,0].yaxis.set_visible(True)
         #    ax[i,0].spines['left'].set_visible(True)

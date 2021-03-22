@@ -22,6 +22,8 @@ from atrial_model.iNa.model_setup import model_param_names, model, mp_locs, sub_
 import numpy as np
 import pickle
 import matplotlib.pyplot as plt
+import datetime
+from time import sleep
 
 class ObjContainer():
     pass
@@ -69,13 +71,21 @@ temp = 20
         
 b_temp = np.zeros_like(mp_locs, dtype=float)
 b_temp[[1,4,10,14,21]] = -0.7/10
-b_temp[[3,6,9,11,15,20,22]] = 0.6
-b_temp[[3]] = -0.9
+b_temp[[3,6,9,11,15,20,22]] = 0.4#0.6
+b_temp[[3]] = -0.4#-0.9
 
-b_temp[2] = -0.1
-b_temp[8] = -0.1
+#modifications
+b_temp[2] = -0.08 #mss tau
+b_temp[8] = -0.08 #hss tau
+b_temp[9] = 0.8 #hss shift
+
+#b_temp[4] = -0.1
+#b_temp[22] += 0.9
+#b_temp[23] = -0.1
+b_temp[[6,11,15,22]] = 0
+
 ## to be fit
-b_temp[0] = 0.08#0.05
+b_temp[0] = 0.05
 
 #b_temp[[2,4,10,12]] = 0
 intercept = np.median(db_post['model_param_intercept'][chain][burn_till:], axis=0)
@@ -87,7 +97,7 @@ mp_sd[[3,11]] = 0.4 #iv curve added variability
 
 mp_cor = np.median(db_post['model_param_corr'][chain][burn_till:], axis=0)
 
-mp_cor[4,10] = 0.9
+#mp_cor[4,10] = mp_cor[10,4] = 0.4
 
 mp_cov = np.outer(mp_sd, mp_sd)*mp_cor
 #mp_cov = np.cov((med_model_param.T-np.mean(med_model_param, axis=1)))
@@ -110,13 +120,14 @@ mp_cov = np.outer(mp_sd, mp_sd)*mp_cor
 #??
 #mp_sd = mp_sd
 
-num_trials = 100
+num_trials = 20
 
 #sub_mp_draws = np.random.normal(loc=mp_mean, scale=mp_sd, 
 #                                size=(num_trials, len(mp_mean)))
 
 
 sub_mp_draws = np.random.multivariate_normal(mean=mp_mean, cov=mp_cov, size=num_trials)
+#np.tile(mp_mean, (num_trials, 1))#
 
 # sub_mp_draws[sub_mp_draws[:,2] < -2, 2] = -2
 # sub_mp_draws[sub_mp_draws[:,3] < -15.5, 3] = -15
@@ -125,13 +136,15 @@ sub_mp_draws = np.random.multivariate_normal(mean=mp_mean, cov=mp_cov, size=num_
 
 proto = pylqt.Protocols.CurrentClamp()
 proto.setCellByName('Human Atrial (Modified)')
+proto.setDataDir(basedir = 'U:/data')
 
 cell = proto.cell
 cell.setOption('Novel2020', True)
 
 proto.numtrials = num_trials
-proto.tMax = 500000
-proto.writetime = 490000
+proto.tMax = 15000#500000#
+proto.writetime = 0#490000#0
+proto.bcl = 1000
 
 ina_name = 'Novel'
 cell_params_names = [ina_name+'.'+mp_name for mp_name in model_param_names]
@@ -155,7 +168,8 @@ to_trace.add('Novel.i1s')
 to_trace.add('Novel.js')
 cell.variableSelection = to_trace
 
-proto.measureMgr.addMeasure('vOld', {'maxderiv'})
+proto.measureMgr.addMeasure('vOld', {'maxderiv', 'dur'})
+proto.measureMgr.addMeasure('iNa', {'min'})
 
 def calback(*args, **kwargs):
     sim_data = pylqt.Misc.DataReader.readDir(proto.datadir)
@@ -167,3 +181,22 @@ sim_runner.run()
 
 settings = pylqt.Misc.SettingsIO.getInstance()
 settings.writeSettings(proto.datadir+"/simvars.xml", proto)
+
+t0 = datetime.datetime.now()
+taken_char = '\u2588'
+left_char = '-'
+term_len= 60
+text = '\r[{}{}] {prog}% elsapsed {deltat}'
+while sim_runner.finished() == False:
+    prog = sim_runner.progressPercent()
+    n_taken = int(prog/100 * term_len)
+    n_left = term_len - n_taken
+    taken = taken_char*n_taken
+    left = left_char*n_left
+    t1 = datetime.datetime.now()
+    deltat = t1 - t0
+    print(text.format(taken, left, prog=round(prog, 3),
+                        deltat=str(deltat)), end='')
+    sleep(0.5)
+print()
+input("Press return key to exit")

@@ -117,7 +117,7 @@ keys_keep += keys_iin
 #            ('21647304_2', 'Dataset C Adults'), ('21647304_2', 'Dataset C Pediactric')]
 #keys_keep += keys_iin
 
-#tau activation
+#idealized current trace
 keys_iin = [#('8928874_8',	'Dataset D fresh')#, ('8928874_8',	'Dataset D day 1'),\
 #            ('8928874_8',	'Dataset D day 3'), ('8928874_8',	'Dataset D day 5'),
             ('7971163_3',	'Dataset C')
@@ -158,14 +158,53 @@ datas = {key: data for key, data in datas.items() if key in keys_keep}
 sim_param = dict(naO=140, naI=9.136, TEMP=310)
 for key in sim_fs:
     sim_fs[key].sim_param = sim_param
-voltages = np.empty((26,2))
+    
+##iv curve
+key = ('8928874_7', 'Dataset C day 1')
+n_exp = 60
+voltages = np.empty((n_exp,2))
 voltages[:,0] = -140
-voltages[:,1] = np.arange(-90, 40, 5)
+voltages[:,1] = np.linspace(-60, 35, n_exp)
 durs = np.empty_like(voltages)
-durs[:,:] = [10, 20]
-sim_fs[('8928874_7', 'Dataset C day 1')].durs = durs
-sim_fs[('8928874_7', 'Dataset C day 1')].voltages = voltages
-datas[('8928874_7', 'Dataset C day 1')] = np.fliplr(voltages)
+durs[:,:] = [10, 10]
+sim_fs[key].durs = durs
+sim_fs[key].voltages = voltages
+datas[key] = np.fliplr(voltages)
+
+##activation normalized to driving force
+key = ('1323431_2',	'Dataset')
+n_exp = 60
+voltages = np.empty((n_exp,2))
+voltages[:,0] = -140
+voltages[:,1] = np.linspace(-60, 20, n_exp)
+durs = np.empty_like(voltages)
+durs[:,:] = [10, 10]
+sim_fs[key].durs = durs
+sim_fs[key].voltages = voltages
+datas[key] = np.fliplr(voltages)
+
+# I2/I1 Recovery
+key = ('1323431_8', 'Dataset A -140')
+n_exp = 60
+voltages = np.tile([-140.,  -20., -140.,  -20.], (n_exp,1))
+durs = np.tile([50.0, 1000.0, 0.0, 10.0], (n_exp,1))
+durs[:,2] = np.geomspace(0.1, 50, n_exp)
+sim_fs[key].durs = durs
+sim_fs[key].voltages = voltages
+datas[key] = np.fliplr(durs[:,[0,2]])
+
+##inactivation normalized to no prepulse
+key = ('7971163_4', 'Dataset 512ms')
+n_exp = 30
+voltages = np.empty((n_exp,2))
+voltages[:,0] = -140
+voltages[:,1] = np.linspace(-75, -50, n_exp)
+durs = np.empty_like(voltages)
+durs[:,:] = [10, 10]
+sim_fs[key].durs = durs
+sim_fs[key].voltages = voltages
+datas[key] = np.fliplr(voltages)
+
 
 #------------------------------------------------------------------------------
 #------------------------------------------------------------------------------
@@ -176,7 +215,7 @@ atrial_model.run_sims_functions.plot3 = False #tau
 if __name__ == '__main__':
     chain = 0
     burn_till =  1000
-    use_cache = False
+    use_cache = True
     num_draws = 100
     
     if not use_cache:
@@ -192,6 +231,8 @@ if __name__ == '__main__':
         filename = 'mcmc_OHaraRudy_wMark_INa_1213_1353'
         
         filename = 'mcmc_OHaraRudy_wMark_INa_0127_1525'
+        filename = 'mcmc_OHaraRudy_wMark_INa_0215_0722'
+
 
         
         #filename = './mcmc_Koval_0511_1609'
@@ -228,16 +269,30 @@ if __name__ == '__main__':
                 
         b_temp = np.zeros_like(mp_locs, dtype=float)
         b_temp[[1,4,10,14,21]] = -0.7/10
-        b_temp[[3,6,9,11,15,20,22]] = 0.4
-        b_temp[[3]] = -0.4
+        b_temp[[3,6,9,11,15,20,22]] = 0.4#0.6
+        b_temp[[3]] = -0.4#-0.9
+        
+        #modifications
+        b_temp[2] = -0.08
+        b_temp[8] = -0.08
+        b_temp[9] = 0.8
+        b_temp[[6,11,15,22]] = 0
+        #b_temp[21] = -0.09
+        #b_temp[4] = -0.09
+        
+        ## to be fit
+        b_temp[0] = 0.05#0.05
         
         #b_temp[[2,4,10,12]] = 0
         intercept = np.median(db_post['model_param_intercept'][chain][burn_till:], axis=0)
-        intercept[18] = 1.7
         mp_mean = intercept + b_temp*temp
         mp_sd = np.median(db_post['model_param_sd'][chain][burn_till:], axis=0)
+        mp_sd[[3,11]] = 0.4 #iv curve added variability
         
         mp_cor = np.median(db_post['model_param_corr'][chain][burn_till:], axis=0)
+        
+        #mp_cor[4,10] = mp_cor[10,4] = 0.4
+        
         mp_cov = np.outer(mp_sd, mp_sd)*mp_cor
 #        med_model_param = np.median(db_post['model_param'][chain][burn_till:], axis=0)
 #        mp_cov = np.cov((med_model_param.T-np.mean(med_model_param, axis=1)))

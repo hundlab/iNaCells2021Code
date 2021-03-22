@@ -278,7 +278,7 @@ if __name__ == '__main__':
         #diff_fn(sub_mps, exp_params=exp_parameters, 
                         #keys=keys_keep)
         for i in [5]:#range(44):
-            sub_mps = np.copy(model_param[-1,i,:])
+#            sub_mps = np.copy(model_param[-1,i,:])
 #            sub_mps[18] = 1.7
 #            sub_mps[21] = -1
 #            sub_mps[0] = 1

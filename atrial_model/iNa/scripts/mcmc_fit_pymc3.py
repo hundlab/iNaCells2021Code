@@ -70,10 +70,10 @@ if __name__ == '__main__':
     model_name +=  args.model_name
     model_name += '_{cdate.month:02d}{cdate.day:02d}_{cdate.hour:02d}{cdate.minute:02d}'
     model_name = model_name.format(cdate=datetime.datetime.now())
-    model_name += '{}.pickle'
+    model_name += '{}.{}'
     db_path = args.out_dir+'/'+model_name
-    trace_db_path = db_path.format('_trace')
-    main_db_path = db_path.format('')
+    trace_db_path = db_path.format('_trace', 'nc')
+    main_db_path = db_path.format('', 'pickle')
     
     model_db = {}
 #    model_db['model_params_initial'] = model_params_initial
@@ -226,7 +226,7 @@ if __name__ == '__main__':
                     
 #                import pdb
 #                pdb.set_trace()
-                trace = pm.sample(draws=10000, tune=40000, discard_tuned_samples=False,
+                trace = pm.sample(draws=20000, tune=100, discard_tuned_samples=False,
                                   return_inferencedata=False, #this does not work if set to T
                                   compute_convergence_checks=False,
                                   trace=old_trace, start=start,
@@ -261,6 +261,8 @@ if __name__ == '__main__':
             scalings = {name: step1.steps[name].scaling for name in step1.steps.keys()}
         except Exception:
             print("Getting trace_deltas failed")
+        
+        az.to_netcdf(az_trace, trace_db_path)
         
         model_db['num_calls'] = run_biophysical.call_counter
         model_db['key_frame'] = key_frame
