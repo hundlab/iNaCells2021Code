@@ -32,7 +32,7 @@ from atrial_model.iNa.stat_model_3 import StatModel, key_frame
 from atrial_model.iNa.model_setup import model_params_initial, mp_locs, sub_mps, model
 from atrial_model.pymc3step import MultiMetropolis, MultivariateNormalProposal,\
     RowwiseMultivariateNormalProposal, NormalProposal
-from atrial_model.pymc3stepMetrop import DEMetropolisJoint, DEMetropolisZ
+from atrial_model.pymc3stepMetrop import DEMetropolisJoint
 
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
@@ -51,15 +51,12 @@ def add_transformed(start, stat_model):
         t_chain = deepcopy(chain)
         start2.append(t_chain)
         for key, val in  chain.items():
-            try:
-                var = stat_model[key]
-                if hasattr(var, 'transformation'):
-                    transformed_name = var.name+'_'+\
-                        var.transformation.name+'__'
-                    transformed_val = var.transformation.forward_val(val.copy())
-                    t_chain[transformed_name] = transformed_val
-            except KeyError:
-                print(key, " is missing")
+            var = stat_model[key]
+            if hasattr(var, 'transformation'):
+                transformed_name = var.name+'_'+\
+                    var.transformation.name+'__'
+                transformed_val = var.transformation.forward_val(val.copy())
+                t_chain[transformed_name] = transformed_val
     return start2
 
 if __name__ == '__main__':
@@ -73,10 +70,10 @@ if __name__ == '__main__':
     model_name +=  args.model_name
     model_name += '_{cdate.month:02d}{cdate.day:02d}_{cdate.hour:02d}{cdate.minute:02d}'
     model_name = model_name.format(cdate=datetime.datetime.now())
-    model_name += '{}.{}'
+    model_name += '{}.pickle'
     db_path = args.out_dir+'/'+model_name
-    trace_db_path = db_path.format('_trace', 'nc')
-    main_db_path = db_path.format('', 'pickle')
+    trace_db_path = db_path.format('_trace')
+    main_db_path = db_path.format('')
     
     model_db = {}
 #    model_db['model_params_initial'] = model_params_initial
@@ -113,7 +110,6 @@ if __name__ == '__main__':
             
                 logps_trace = {name: [] for name in logps}
                 total_logp_trace = []
-                diverge = []
                 
                 def stop_sim_callback(trace, draw, **kwargs):
 
@@ -123,16 +119,6 @@ if __name__ == '__main__':
                         logps_trace[name].append((draw.chain, part_logp))
                         total_logp += np.sum(part_logp)
                     total_logp_trace.append((draw.chain, total_logp))
-
-                    # if len(diverge) != len(draw.stats):
-                    #     diverge = [int(stat['diverging']) for stat in draw.stats]
-                    # else:
-                    #     diverge = [diverge[i] + int(draw.stats[i]['diverging'])
-                    #                for i in range(len(diverge))]
-                    try:
-                        print([int(stat['diverging']) for stat in draw.stats], end=' ')
-                    except Exception:
-                        pass
 
                     end = ' '
                     if draw.chain == n_chains-1:
@@ -165,7 +151,7 @@ if __name__ == '__main__':
                         proposal_cov = db_full['proposal_cov']
                         scalings = db_full['scalings']
                         try:
-                            start = get_last(db.posterior)#warmup_
+                            start = get_last(db.warmup_posterior)
                         except AttributeError:
                             start = get_last(db.posterior)
                         start = add_transformed(start, stat_model)
@@ -210,9 +196,7 @@ if __name__ == '__main__':
                                         S=proposal_cov,
                                         scaling=scalings,
                                         tune_interval=150,
-                                        key_groups=groups,
-                                        alt_step_interval=-1,
-                                        tune=False)
+                                        key_groups=groups)
 #                step1 = DEMetropolisJoint(vars=stat_model.model_param, tune=None)#"lambda"
                 step.append(step1)
                 
@@ -225,24 +209,6 @@ if __name__ == '__main__':
                 # step2 = pm.NUTS(vars=stat_model.paper_eff_sd, k=0.95, t0=40, step_scale=0.05)
                 # step.append(step2)
                 
-#                step4 = pm.NUTS(vars=[stat_model.error_sd], step_scale=0.02)
-#                step.append(step4)
-
-                # step2 = DEMetropolisZ(vars=stat_model.error_sd, history=db.posterior)
-                # step.append(step2)
-                
-                # step3 = DEMetropolisZ(vars=stat_model.model_param_sd, history=db.posterior)
-                # step.append(step3)
-                
-                # step3 = DEMetropolisZ(vars=stat_model.paper_eff, history=db.posterior)
-                # step.append(step3)
-                
-                # step4 = DEMetropolisZ(vars=[stat_model.b_temp, 
-                #                        stat_model.model_param_intercept], history=db.posterior)
-                # step.append(step4)
-                
-
-                
 #                for var in pm.inputvars(stat_model.model_param):
 #                    step1 = pm.DEMetropolis(vars=var, tune='lambda')
 #                    step.append(step1)
@@ -250,38 +216,8 @@ if __name__ == '__main__':
 #                for var in other_vars:
 #                    step_other = pm.DEMetropolis(vars=var)
 #                    step.append(step_other)
-                #step2 = DEMetropolisZ(vars=other_vars)
-                #step.append(step2)
-                step2 = pm.NUTS(vars=other_vars, step_scale=0.02, max_treedepth=12, target_accept=0.99)
+                step2 = pm.NUTS(vars=other_vars)
                 step.append(step2)
-#                step3 = DEMetropolisZ(stat_model.paper_eff)
-#                step.append(step3)
-                # step2 = pm.NUTS(vars=[stat_model.paper_eff,
-                #                       stat_model
-                #                       stat_model.b_temp, 
-                #                       stat_model.model_param_intercept,
-                #                       stat_model.model_param_chol],
-                #                 step_scale=0.02,
-                #                 max_treedepth=12)
-                # step.append(step2)
-                # step2d = pm.NUTS(vars=[#stat_model.paper_eff, 
-                #        stat_model.b_temp], 
-                #        #stat_model.model_param_intercept],
-                #  step_scale=0.02,
-                #  max_treedepth=12)
-                # step.append(step2d)
-                # step2b = pm.NUTS(vars=[stat_model.paper_eff_sd], 
-                #                        step_scale=0.02,
-                #                        max_treedepth=12)
-                # step.append(step2b)
-                # step2c = pm.NUTS(vars=[stat_model.paper_eff_stand], 
-                #        step_scale=0.02,
-                #        max_treedepth=12)
-                # step.append(step2c)
-                # step3 = pm.NUTS(vars=[stat_model.model_param_chol], step_scale=0.02)
-                # step.append(step3)
-#                step4 = pm.NUTS(vars=[stat_model.error_sd], step_scale=0.02)
-#                step.append(step4)
 
                 if not args.max_time is None:
                     #max_time is in hours
@@ -290,7 +226,7 @@ if __name__ == '__main__':
                     
 #                import pdb
 #                pdb.set_trace()
-                trace = pm.sample(draws=20000, tune=500, discard_tuned_samples=False,
+                trace = pm.sample(draws=10000, tune=40000, discard_tuned_samples=False,
                                   return_inferencedata=False, #this does not work if set to T
                                   compute_convergence_checks=False,
                                   trace=old_trace, start=start,
@@ -326,15 +262,13 @@ if __name__ == '__main__':
         except Exception:
             print("Getting trace_deltas failed")
         
-        az.to_netcdf(az_trace, trace_db_path)
-        
         model_db['num_calls'] = run_biophysical.call_counter
         model_db['key_frame'] = key_frame
         model_db['trace'] = az_trace
         model_db['proposal_cov'] = proposals
         model_db['scalings'] = scalings
-#        model_db['trace_deltas'] = trace_deltas
-#        model_db['trace_covs'] = trace_covs
+        model_db['trace_deltas'] = trace_deltas
+        model_db['trace_covs'] = trace_covs
         model_db['logps_trace'] = logps_trace
         model_db['total_logp_trace'] = total_logp_trace
 

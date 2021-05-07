@@ -46,73 +46,7 @@ def StatModel(run_biophysical, key_frame, datas, mp_locs, model):
     with pm.Model() as model:
         num_sims = len(key_frame)
     
-        paper_idx = {}
-        curr_idx = 0
-        sim_idx = []
-        for key in key_frame.index:
-            pubmed_id = int(key[0].split('_')[0])
-            if not pubmed_id in paper_idx:
-                paper_idx[pubmed_id] = curr_idx
-                curr_idx += 1
-            sim_idx.append(paper_idx[pubmed_id])
-        sim_paper_idx = np.array(sim_idx)    
-    
-        key_groups = list(key_frame['Sim Group'].unique())
-        key_groups_map = {gr: i for i, gr in enumerate(key_groups)}
-        key_groups_idx = np.array(key_frame['Sim Group'].map(
-            key_groups_map))
-
-    
-        # overall covariance
-        alpha = 2*np.ones(len(mp_locs), dtype=float)#0.001
-        beta = 1*np.ones(len(mp_locs), dtype=float)#0.001
-        alpha[18] = 11
-        beta[18] = 1
-        sd_dist = pm.InverseGamma.dist(alpha = alpha,
-                                        beta = beta,
-                                        shape=len(mp_locs),
-                                        testval = 1.)
-        model_param_chol, corr, stds = pm.LKJCholeskyCov("model_param_chol",
-                                  n = len(mp_locs),
-                                  eta = 1, #no prior on sparsity
-                                  sd_dist = sd_dist,
-                                  compute_corr=True
-                                  )
         
-        model_param_corr = pm.Deterministic('model_param_corr', corr)
-        model_param_sd = pm.Deterministic('model_param_sd', stds)
-        
-        # model_param_sd = pm.InverseGamma('model_param_sd', 
-        #                                alpha = alpha,
-        #                                beta = beta,
-        #                                shape=len(mp_locs),
-        #                                testval = 1.)
-        # alpha = 40*np.ones(len(mp_locs), dtype=float)
-        # beta = 1*np.ones(len(mp_locs), dtype=float)
-        # alpha[4] = 40
-        # beta[4] = 1
-        # alpha[18] = 80
-        # beta[18] = 1
-        # testval = np.ones(mp_locs.shape, dtype=float)
-        # paper_eff_lam_sd = pm.InverseGamma("paper_eff_lam_sd", 
-        #                       alpha = alpha,
-        #                       beta = beta,
-        #                       shape = mp_locs.shape,
-        #                       testval = testval)
-        
-        # mu = np.zeros((len(paper_idx), len(mp_locs)))
-        # sd_idx = np.tile(np.arange(len(mp_locs)), (len(paper_idx), 1))
-        # paper_eff_lam_stand = pm.Normal("paper_eff_lam_stand",
-        #                             #nu = 5,
-        #                             mu = 0,
-        #                             sigma = 1,
-        #                             shape = mu.shape)
-        # #paper_eff_cov = tt.outer(paper_eff_sd, paper_eff_sd) * corr
-        # #paper_eff_chol = tt.slinalg.cholesky(paper_eff_cov)
-        # paper_eff_lam = pm.Deterministic("paper_eff_lam", 
-        #                              tt.exp(paper_eff_lam_sd[sd_idx]*paper_eff_lam_stand))
-    
-    
         # overall model parameter mean prior ~N
         mu = np.zeros(mp_locs.shape)
         sigma = np.ones(mp_locs.shape)*100
@@ -132,60 +66,36 @@ def StatModel(run_biophysical, key_frame, datas, mp_locs, model):
 
         #temperature coefficiant ~ N
         mu = np.zeros(mp_locs.shape)# update to fit q10 (0.2)
-        simga = np.ones(mp_locs.shape)*0.01 # .1
-        mu[[1,4,10,14,21]] = -0.07
-        simga[[1,4,10,14,21]] = .01
+        simga = np.ones(mp_locs.shape)*100 # .1
+        mu[[1,4,10,14,21]] = -0.7/10
+        simga[[1,4,10,14,21]] = .1
         mu[[6,9,11,15,20,22]] = 0.4
         mu[3] = -0.4
-        simga[[3,6,9,11,15,20,22]] = .01
+        simga[[3,6,9,11,15,20,22]] = .1
         mu[18] = 0
-        simga[18] = .01
-        
-        #modifications
-        mu[2] = -0.08 #mss tau
-        mu[8] = -0.08 #hss tau
-        mu[9] = 0.8 #hss shift
-        
-        mu[[6,11,15,22]] = 0
-        
-        ## to be fit
-        mu[0] = 0.05
+        simga[18] = .1
 
 #        mu = 0# update to fit q10 (0.2)
 #        sigma = 100 # .1
         b_temp = pm.Normal("b_temp",
-                                    mu = mu,
-                                    sigma = sigma,
-                                    shape = mp_locs.shape)
-        #b_temp = pm.Deterministic("b_temp", theano.shared(mu))
-        
-        # #experement effect
-        # alpha = 2*np.ones(len(mp_locs), dtype=float)
-        # beta = 1*np.ones(len(mp_locs), dtype=float)
-        # alpha[18] = 11
-        # beta[18] = 1
-        # testval = np.ones(mp_locs.shape, dtype=float)
-        # exp_eff_sd = pm.InverseGamma("exp_eff_sd", 
-        #                       alpha = alpha,
-        #                       beta = beta,
-        #                       shape = mp_locs.shape,
-        #                       testval = testval)
-        
-        # mu = np.zeros((len(key_groups), len(mp_locs)))
-        # sd_idx = np.tile(np.arange(len(mp_locs)), (len(key_groups), 1))
-        # exp_eff_stand = pm.StudentT("exp_eff_stand",
-        #                             nu = 5,
-        #                             mu = 0,
-        #                             sigma = 1,
-        #                             shape = mu.shape)
-        # #paper_eff_cov = tt.outer(paper_eff_sd, paper_eff_sd) * corr
-        # #paper_eff_chol = tt.slinalg.cholesky(paper_eff_cov)
-        # #paper_eff = pm.Deterministic("paper_eff", mu + scale*paper_eff_sd[sd_idx]*paper_eff_stand)
-        # exp_eff = pm.Deterministic("exp_eff", mu + exp_eff_sd[sd_idx]*exp_eff_stand)
+                                   mu = mu,
+                                   sigma = sigma,
+                                   shape = mp_locs.shape)
         
         # paper effect
-        alpha = 2*np.ones(len(mp_locs), dtype=float)
-        beta = 1*np.ones(len(mp_locs), dtype=float)
+        paper_idx = {}
+        curr_idx = 0
+        sim_idx = []
+        for key in key_frame.index:
+            pubmed_id = int(key[0].split('_')[0])
+            if not pubmed_id in paper_idx:
+                paper_idx[pubmed_id] = curr_idx
+                curr_idx += 1
+            sim_idx.append(paper_idx[pubmed_id])
+        sim_paper_idx = np.array(sim_idx)
+            
+        alpha = 0.001*np.ones(len(mp_locs), dtype=float)
+        beta = 0.001*np.ones(len(mp_locs), dtype=float)
         alpha[18] = 11
         beta[18] = 1
         testval = np.ones(mp_locs.shape, dtype=float)
@@ -194,19 +104,12 @@ def StatModel(run_biophysical, key_frame, datas, mp_locs, model):
                               beta = beta,
                               shape = mp_locs.shape,
                               testval = testval)
-        
         mu = np.zeros((len(paper_idx), len(mp_locs)))
         sd_idx = np.tile(np.arange(len(mp_locs)), (len(paper_idx), 1))
-        paper_eff_stand = pm.Normal("paper_eff_stand",
-                                    #nu = 5,
-                                    mu = 0,
-                                    sigma = 1,
+        paper_eff = pm.Normal("paper_eff",
+                                    mu = mu,
+                                    sigma = paper_eff_sd[sd_idx],
                                     shape = mu.shape)
-        #paper_eff_cov = tt.outer(paper_eff_sd, paper_eff_sd) * corr
-        #paper_eff_chol = tt.slinalg.cholesky(paper_eff_cov)
-        #paper_eff = pm.Deterministic("paper_eff", mu + scale*paper_eff_sd[sd_idx]*paper_eff_stand)
-        paper_eff = pm.Deterministic("paper_eff", mu + paper_eff_sd[sd_idx]*paper_eff_stand)
-        #paper_eff = pm.Deterministic("paper_eff", mu + paper_eff_chol.dot(paper_eff_stand.T).T)
         
         
         # overall model parameter stdev prior ~Gamma
@@ -221,15 +124,31 @@ def StatModel(run_biophysical, key_frame, datas, mp_locs, model):
         #                       shape = mp_locs.shape,
         #                       testval = testval)
         
-
+        # overall covariance
+        alpha = 0.001*np.ones(len(mp_locs), dtype=float)
+        beta = 0.001*np.ones(len(mp_locs), dtype=float)
+        alpha[18] = 11
+        beta[18] = 1
+        sd_dist = pm.InverseGamma.dist(alpha = alpha,
+                                       beta = beta,
+                                       shape=len(mp_locs),
+                                       testval = 1.)
+        model_param_chol, corr, stds = pm.LKJCholeskyCov("model_param_chol",
+                                  n = len(mp_locs),
+                                  eta = 1, #no prior on sparsity
+                                  sd_dist = sd_dist,
+                                  compute_corr=True
+                                  )
+        
+        model_param_corr = pm.Deterministic('model_param_corr', corr)
+        model_param_sd = pm.Deterministic('model_param_sd', stds)
         
         #linear mean
         model_param_index = np.arange(start=0,stop=len(mp_locs),step=1,dtype=int)
         model_param_index = np.tile(model_param_index, (num_sims,1))
         mean = model_param_intercept[model_param_index] +\
             b_temp[model_param_index]*temperature_arr[...,None] +\
-            paper_eff[sim_paper_idx,:]# +\
-            #exp_eff[key_groups_idx,:]
+            paper_eff[sim_paper_idx,:]
 
 
         # model_param = MyMvNorm("model_param",
@@ -238,15 +157,10 @@ def StatModel(run_biophysical, key_frame, datas, mp_locs, model):
         #                        shape=model_param_index.shape)
         model_params = []
         for i,key in enumerate(key_frame.index):
-            
             model_param_sing = pm.MvNormal('mp '+str(key),
-                                            mu=mean[i],
-                                            chol=model_param_chol,
-                                            shape=len(mp_locs))
-            # model_param_sing = pm.Normal('mp '+str(key),
-            #                     mu=mean[i],
-            #                     sigma=model_param_sd*paper_eff_lam,
-            #                     shape=len(mp_locs))
+                                           mu=mean[i],
+                                           chol=model_param_chol,
+                                           shape=len(mp_locs))
             model_params.append(model_param_sing)
         model_param = pm.Deterministic('model_param', tt.stack(model_params))
         # model parameter  ~ N
@@ -266,9 +180,10 @@ def StatModel(run_biophysical, key_frame, datas, mp_locs, model):
     
     
         # st dev for each protocol ~ Gamma
+        key_groups = list(key_frame['Sim Group'].unique())
         testval = np.ones(len(key_groups), dtype=float)
-        alpha = 0.1
-        beta = 0.1
+        alpha = 0.001
+        beta = 0.001
         error_sd = pm.InverseGamma("error_sd",
                                   alpha = alpha,
                                   beta = beta,
