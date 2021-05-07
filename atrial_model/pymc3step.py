@@ -173,8 +173,8 @@ class SingleMetropolis():
         self.steps_until_tune = tune_interval
         self.accepted = []
 
-        self.update_scale = True
-        self.update_S = True
+        self.update_scale = False
+        self.update_S = False
         self.update_sd_scale = False
         self.trace = []
         self.trace_deltas = []
@@ -260,7 +260,7 @@ class SingleMetropolis():
             self.latest[:] = q[:]
         else:
             self.latest = np.copy(q)
-        self.alt_step -= 1
+        self.alt_step = max(-1, self.alt_step-1)
         
         return q
     
@@ -331,7 +331,7 @@ class MultiMetropolis(BlockedStep):
     name = "multi_metropolis"
 
     default_blocked = True
-    generates_stats = True
+    generates_stats = False
 
     def __init__(
         self,
@@ -429,10 +429,10 @@ class MultiMetropolis(BlockedStep):
               np.round(logp_old, 2),
               np.round(logp_new-logp_old,2),
               np.round(sum(map(lambda x: np.log(x["accept"]) 
-                               if x['accepted'] else 0,
-                               stats))))
+                                if x['accepted'] else 0,
+                                stats))))
 
-        return new_point, stats
+        return new_point#, stats
 
     @staticmethod
     def competence(var, has_grad):

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Created on Tue Oct 20 13:09:26 2020
+Created on Thu Feb 25 15:46:10 2021
 
 @author: grat05
 """
@@ -75,17 +75,15 @@ b_temp[[3,6,9,11,15,20,22]] = 0.4#0.6
 b_temp[[3]] = -0.4#-0.9
 
 #modifications
-b_temp[2] = -0.08 #mss tau
-b_temp[8] = -0.08 #hss tau
-b_temp[9] = 0.8 #hss shift
-
-#b_temp[4] = -0.1
-#b_temp[22] += 0.9
-#b_temp[23] = -0.1
+b_temp[2] = -0.08
+b_temp[8] = -0.08
+b_temp[9] = 0.8
 b_temp[[6,11,15,22]] = 0
+#b_temp[21] = -0.09
+#b_temp[4] = -0.09
 
 ## to be fit
-b_temp[0] = 0.05
+b_temp[0] = 0.05#0.05
 
 #b_temp[[2,4,10,12]] = 0
 intercept = np.median(db_post['model_param_intercept'][chain][burn_till:], axis=0)
@@ -120,14 +118,13 @@ mp_cov = np.outer(mp_sd, mp_sd)*mp_cor
 #??
 #mp_sd = mp_sd
 
-num_trials = 20
+num_trials = 100
 
 #sub_mp_draws = np.random.normal(loc=mp_mean, scale=mp_sd, 
 #                                size=(num_trials, len(mp_mean)))
 
 
 sub_mp_draws = np.random.multivariate_normal(mean=mp_mean, cov=mp_cov, size=num_trials)
-#np.tile(mp_mean, (num_trials, 1))#
 
 # sub_mp_draws[sub_mp_draws[:,2] < -2, 2] = -2
 # sub_mp_draws[sub_mp_draws[:,3] < -15.5, 3] = -15
@@ -142,9 +139,42 @@ cell = proto.cell
 cell.setOption('Novel2020', True)
 
 proto.numtrials = num_trials
-proto.tMax = 500_000#
-proto.writetime = 480_000#0
-proto.bcl = 1000
+proto.tMax = 320_000+100_000
+proto.writetime = 500_000#490000
+
+class lowerBCL():
+    
+    # the constructors in python are called __init__
+    # bcls is a list of the bcls which will be used during the simulation
+    def __init__(self, bcls):
+        self.bcls = bcls
+    def hz_to_bcl(hz):
+        return 1000/hz
+    def __len__(self):
+        return len(self.bcls)
+    # this is the method that will be called to change the bcl
+    # proto is the currently runing protocol (so this is will be many copies
+    # of the proto we loaded from the settings)
+    def __call__(self, proto):
+        try:
+            idx = self.bcls.index(int(proto.bcl))
+        except:
+            idx = -1
+        idx += 1
+        if idx < len(self.bcls):
+            bcl = self.bcls[idx]
+            proto.bcl = bcl
+        else:
+            proto.paceflag = False
+            
+
+
+bcls = [1600, 1200, 1000, 800, 500, 333]#, 250, 200]
+func = lowerBCL(bcls)
+proto.bcl = bcls[0]
+
+proto.setRunDuring(func, firstRun=20_000, runEvery=50_000, numruns=len(func))
+
 
 ina_name = 'Novel'
 cell_params_names = [ina_name+'.'+mp_name for mp_name in model_param_names]
@@ -157,6 +187,11 @@ for i in range(len(model_param_names)):
     pvar = proto.pvars[cell_params_names[i]]
     pvar.trials = sub_mp_draws[:,i]
 
+# pvar = proto.pvars.IonChanParam(proto.pvars.none,
+#                         val1 = 3.5,
+#                         val2 = 0)
+# proto.pvars["IkrFactor"] = pvar
+
 to_trace = cell.variableSelection
 to_trace.add('iNa')
 to_trace.add('Novel.m')
@@ -168,7 +203,7 @@ to_trace.add('Novel.i1s')
 to_trace.add('Novel.js')
 cell.variableSelection = to_trace
 
-proto.measureMgr.addMeasure('vOld', {'maxderiv', 'dur'})
+proto.measureMgr.addMeasure('vOld', {'maxderiv', 'cl', 'dur'})
 proto.measureMgr.addMeasure('iNa', {'min'})
 
 def calback(*args, **kwargs):

@@ -146,9 +146,9 @@ keys_keep += keys_iin
 #from SaveSAP import savePlots,setAxisSizePlots
 #sizes = {'deviance': (4, 4), 'deviance_zoomed': (4, 4), 'model_param_mean': (4, 4), 'b_temp': (4, 4), 'model_param_tau': (4, 4), 'model_params_legend': (2, 6), 'error_tau': (4, 4), 'sim_groups_legend': (2, 6), 'GNaFactor': (6, 2), 'baselineFactor': (6, 2), 'mss_tauFactor': (6, 2), 'mss_shiftFactor': (6, 2), 'tm_maxFactor': (6, 2), 'tm_tau1Factor': (6, 2), 'tm_shiftFactor': (6, 2), 'tm_tau2Factor': (6, 2), 'hss_tauFactor': (6, 2), 'hss_shiftFactor': (6, 2), 'thf_maxFactor': (6, 2), 'thf_shiftFactor': (6, 2), 'thf_tau1Factor': (6, 2), 'thf_tau2Factor': (6, 2), 'ths_maxFactor': (6, 2), 'ths_shiftFactor': (6, 2), 'ths_tau1Factor': (6, 2), 'ths_tau2Factor': (6, 2), 'Ahf_multFactor': (6, 2), 'jss_tauFactor': (6, 2), 'jss_shiftFactor': (6, 2), 'tj_maxFactor': (6, 2), 'tj_shiftFactor': (6, 2), 'tj_tau2Factor': (6, 2), 'tj_tau1Factor': (6, 2)}
 #setAxisSizePlots(sizes)
-#savePlots('R:/Hund/DanielGratz/atrial_model/plots/latest/OHaraRudy_wMark/', ftype='svg')
+#savePlots('R:/Hund/DanielGratz/atrial_model/plots/latest/plots/', ftype='svg')
 #setAxisSizePlots([(4,4)]*40)
-#setAxisSizePlots((3,3))
+#setAxisSizePlots((3.5,3.5))
 
 keys_keep = set(keys_keep)
 sim_fs = {key: sim_f for key, sim_f in sim_fs.items() if key in keys_keep}
@@ -188,7 +188,7 @@ key = ('1323431_8', 'Dataset A -140')
 n_exp = 60
 voltages = np.tile([-140.,  -20., -140.,  -20.], (n_exp,1))
 durs = np.tile([50.0, 1000.0, 0.0, 10.0], (n_exp,1))
-durs[:,2] = np.geomspace(0.1, 50, n_exp)
+durs[:,2] = np.geomspace(0.1, 20, n_exp)
 sim_fs[key].durs = durs
 sim_fs[key].voltages = voltages
 datas[key] = np.fliplr(durs[:,[0,2]])
@@ -196,14 +196,16 @@ datas[key] = np.fliplr(durs[:,[0,2]])
 ##inactivation normalized to no prepulse
 key = ('7971163_4', 'Dataset 512ms')
 n_exp = 30
-voltages = np.empty((n_exp,2))
+voltages = np.empty((n_exp,4))
 voltages[:,0] = -140
 voltages[:,1] = np.linspace(-75, -50, n_exp)
+voltages[:,2] = -140
+voltages[:,3] = -20
 durs = np.empty_like(voltages)
-durs[:,:] = [10, 10]
+durs[:,:] = [10, 200, 0, 10]
 sim_fs[key].durs = durs
 sim_fs[key].voltages = voltages
-datas[key] = np.fliplr(voltages)
+datas[key] = np.fliplr(voltages[:, [0,1]])
 
 
 #------------------------------------------------------------------------------
@@ -214,8 +216,8 @@ atrial_model.run_sims_functions.plot3 = False #tau
 
 if __name__ == '__main__':
     chain = 0
-    burn_till =  1000
-    use_cache = True
+    max_loc = 2688#2062
+    use_cache = False
     num_draws = 100
     
     if not use_cache:
@@ -232,6 +234,7 @@ if __name__ == '__main__':
         
         filename = 'mcmc_OHaraRudy_wMark_INa_0127_1525'
         filename = 'mcmc_OHaraRudy_wMark_INa_0215_0722'
+        #filename = 'mcmc_OHaraRudy_wMark_INa_0408_1723'
 
 
         
@@ -284,12 +287,12 @@ if __name__ == '__main__':
         b_temp[0] = 0.05#0.05
         
         #b_temp[[2,4,10,12]] = 0
-        intercept = np.median(db_post['model_param_intercept'][chain][burn_till:], axis=0)
+        intercept = db_post['model_param_intercept'][chain][max_loc]
         mp_mean = intercept + b_temp*temp
-        mp_sd = np.median(db_post['model_param_sd'][chain][burn_till:], axis=0)
+        mp_sd = db_post['model_param_sd'][chain][max_loc]
         mp_sd[[3,11]] = 0.4 #iv curve added variability
         
-        mp_cor = np.median(db_post['model_param_corr'][chain][burn_till:], axis=0)
+        mp_cor = db_post['model_param_corr'][chain][max_loc]
         
         #mp_cor[4,10] = mp_cor[10,4] = 0.4
         
@@ -334,7 +337,7 @@ if __name__ == '__main__':
                 sim_fs_draws[new_key] = sim_fs[key]
         
         with Pool() as proc_pool:
-    #        proc_pool = None
+            #proc_pool = None
     
             results = calc_results(sub_mps, sim_funcs=sim_fs_draws,\
                                 model_parameters_full=model_params_initial,\

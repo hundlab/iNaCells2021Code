@@ -30,7 +30,7 @@ from functools import partial
 import os
 
 
-plot_trace = False
+plot_trace = True
 plot_sim = False
 plot_regressions = False
 plot_pymc_diag = False
@@ -61,7 +61,8 @@ atrial_model.run_sims_functions.plot1 = False #sim
 atrial_model.run_sims_functions.plot2 = False #diff
 atrial_model.run_sims_functions.plot3 = False #tau
 
-burn_till = 2000#500#800#40000#34_000#2500#31_000 #35000
+burn_till =0#500#2000#500#800#40000#34_000#2500#31_000 #35000
+max_loc = 2688
 chain = 0#7
 #burn_till = 60000
 stack = False
@@ -105,10 +106,39 @@ if __name__ == '__main__':
     filename = 'mcmc_OHaraRudy_wMark_INa_0129_1601'
     filename = 'mcmc_OHaraRudy_wMark_INa_0215_0722'
 #    filename = 'mcmc_OHaraRudy_wMark_INa_0319_1706'
-#    filename = 'test'
-
-
+    #filename = 'mcmc_OHaraRudy_wMark_INa_0322_1334'
+#     filename = 'mcmc_OHaraRudy_wMark_INa_0322_1603'
+# #    filename = 'mcmc_OHaraRudy_wMark_INa_0323_0955'
+#     filename = 'mcmc_OHaraRudy_wMark_INa_0323_1628'
+#     #filename = 'mcmc_OHaraRudy_wMark_INa_0324_1010'
+#     filename = 'mcmc_OHaraRudy_wMark_INa_0324_1609'
+# #    filename = 'test'
+#     filename = 'mcmc_OHaraRudy_wMark_INa_0325_1044'
+#     filename = 'mcmc_OHaraRudy_wMark_INa_0325_1300'
+#     filename = 'mcmc_OHaraRudy_wMark_INa_0325_1518'
+#     #filename = 'mcmc_OHaraRudy_wMark_INa_0325_2128'
+#     filename = 'mcmc_OHaraRudy_wMark_INa_0326_1753'
+#     #filename = 'mcmc_OHaraRudy_wMark_INa_0326_1721'
+#     #filename = 'mcmc_OHaraRudy_wMark_INa_0326_2028'
+#     #filename = 'mcmc_OHaraRudy_wMark_INa_0326_2030'
+#     #filename = 'mcmc_OHaraRudy_wMark_INa_0329_0817'
+#     #filename = 'mcmc_OHaraRudy_wMark_INa_0326_2030'
     
+#     #filename = 'mcmc_OHaraRudy_wMark_INa_0329_1005'
+#     #filename = 'mcmc_OHaraRudy_wMark_INa_0329_1730'
+#     #filename = 'mcmc_OHaraRudy_wMark_INa_0330_0906'
+#     #filename = 'mcmc_OHaraRudy_wMark_INa_0330_1020'
+#     #filename = 'mcmc_OHaraRudy_wMark_INa_0330_1130'
+#     #filename = 'mcmc_OHaraRudy_wMark_INa_0330_1212'
+#     #filename = 'mcmc_OHaraRudy_wMark_INa_0330_1428'
+#     #filename = 'mcmc_OHaraRudy_wMark_INa_0331_0817'
+#     #filename = 'mcmc_OHaraRudy_wMark_INa_0331_1057'
+#    # filename = 'mcmc_OHaraRudy_wMark_INa_0402_1513'
+#     #filename = 'mcmc_OHaraRudy_wMark_INa_0407_1328'
+#     filename = 'mcmc_OHaraRudy_wMark_INa_0408_1723'
+
+    #filename = 'mcmc_OHaraRudy_wMark_INa_0215_0722'
+   
     # filename = 'mcmc_OHaraRudy_wMark_INa_0106_1257'
     # filename = 'mcmc_OHaraRudy_wMark_INa_0106_1547'
     # filename = 'mcmc_OHaraRudy_wMark_INa_0107_1145'
@@ -143,7 +173,7 @@ if __name__ == '__main__':
     with open(base_dir+'/'+filename+'.pickle','rb') as file:
         db_full = pickle.load(file)
     db = db_full['trace']
-    db_post = db.warmup_posterior
+    db_post = db.warmup_posterior#posterior#
     # with open(base_dir+'/'+filename+'_metadata.pickle','rb') as file:
     #     model_metadata = pickle.load(file)
     # with open(base_dir+model_metadata.trace_pickel_file,'rb') as file:
@@ -241,7 +271,7 @@ if __name__ == '__main__':
         strokes = no_stroke#stroke_by_s_type
     
         trace = 'logp'
-        trace_data = db.warmup_sample_stats['lp'][0]
+        trace_data = db.sample_stats['lp'][-1]
         fig = plt.figure(trace)
         ax = [fig.add_subplot(1,1,1)]
         ax[0].plot(trace_data[burn_till:], c=c_by_mp[0])
@@ -458,7 +488,7 @@ if __name__ == '__main__':
         
         
         trace = 'model_param_corr'
-        trace_data = db.warmup_posterior[trace][chain]
+        trace_data = db_post[trace][chain]
         fig = plt.figure(trace)
         ax = np.empty((len(mp_locs),len(mp_locs)), dtype=object)
         avgtrace = np.mean(trace_data,axis=0)
@@ -518,7 +548,7 @@ if __name__ == '__main__':
         # b_temp[[1,4,10,14,21]] = -0.7/10
         # b_temp[[3,6,9,11,15,20,22]] = 0.4
         # b_temp[[3]] = -0.4
-        b_temp = np.median(db_post['b_temp'][chain][burn_till:], axis=0)
+        b_temp = db_post['b_temp'][chain][max_loc]
         # for i in range(db['b_temp'][chain].shape[1]):
         #     trace = db['b_temp'][chain][burn_till:, i]
         #     f_sig = np.sum(trace > 0)/len(trace)
@@ -527,7 +557,8 @@ if __name__ == '__main__':
         # b_temp[[2]] = 0
         # b_temp[[10]] = -0.2
         # b_temp[0] = 0.2
-        intercept = np.median(db_post['model_param_intercept'][chain][burn_till:], axis=0)
+        
+        intercept = db_post['model_param_intercept'][chain][max_loc]
         num_sims = len(key_frame)#sum(map(len, model_metadata.keys_all))
         model_params = {}
         fit_keys = key_frame.index #[key for keys in model_metadata.keys_all for key in keys]
@@ -537,12 +568,12 @@ if __name__ == '__main__':
         for key in good_keys:
             temperature = exp_parameters.loc[key, 'temp ( K )'] -290.15
             b_temp_eff = b_temp * temperature
-            sub_mps = intercept + b_temp_eff
-            sub_mps[18] = 1.7
+            sub_mps = np.array(intercept) + np.array(b_temp_eff)
+            #sub_mps[18] = 1.7
             model_params[key] = sub_mps
         model_params = {key: mp for key, mp in model_params.items() if key in good_keys}
         
-        model_param_mean = np.median(db_post['model_param'][chain][burn_till:], axis=0)
+        model_param_mean = db_post['model_param'][chain][max_loc]
 #        model_param_mean[:,2] = 0
         model_param_sim_mean = {key: model_param_mean[k]
                                 for k, key in enumerate(fit_keys)

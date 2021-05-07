@@ -169,6 +169,7 @@ class SimRunner():
 
         except Exception as e:
             res.exception = e
+            raise e
         
         return res
     
@@ -320,7 +321,8 @@ def calc_results(model_parameters_part, model_parameters_full, sim_funcs,\
                 raise ValueError("simulation returned none")
         except Exception as e:
             print(e)
-#            raise e
+#            if raise_err:
+#                raise e
             try:
                 sub_dat = data[key]
                 vals_sims[key] = error_fill*np.ones(sub_dat.shape[0])

@@ -866,6 +866,8 @@ class DEMetropolisZ(ArrayStepShared):
         tune_drop_fraction: float = 0.9,
         model=None,
         mode=None,
+        history=None,
+        history_chain=0,
         **kwargs
     ):
         model = pm.modelcontext(model)
@@ -875,7 +877,7 @@ class DEMetropolisZ(ArrayStepShared):
         vars = pm.inputvars(vars)
 
         if S is None:
-            S = np.ones(model.ndim)
+            S = np.ones(sum(var.dsize for var in vars))
 
         if proposal_dist is not None:
             self.proposal_dist = proposal_dist(S)
@@ -897,7 +899,30 @@ class DEMetropolisZ(ArrayStepShared):
         self.accepted = 0
 
         # cache local history for the Z-proposals
-        self._history = []
+        if history is None:
+            self._history = []
+        else:
+            new_hist = []
+            for var in vars:
+                name = var.name
+                if pm.util.is_transformed_name(name):
+                    untransformed_name = pm.util.get_untransformed_name(name)
+                    untransformed_var = model[untransformed_name]
+                    
+                    trace = np.array(history[untransformed_name][history_chain])
+                    trace = untransformed_var.transformation.forward_val(trace.copy())
+                else:
+                    trace = np.array(history[name][history_chain])
+                trace_flat = np.reshape(trace,
+                                        (trace.shape[0], np.prod(trace.shape[1:])))
+                new_hist.append(trace_flat)
+            new_hist = np.concatenate(new_hist, axis=1)
+            sub_sel = np.random.choice(np.arange(0, new_hist.shape[0]),
+                                       size=int(tune_drop_fraction*new_hist.shape[0]),
+                                       replace=False)
+            self._history = new_hist[sub_sel,:]
+            
+                
         # remember initial settings before tuning so they can be reset
         self._untuned_settings = dict(
             scaling=self.scaling,
@@ -954,7 +979,8 @@ class DEMetropolisZ(ArrayStepShared):
         accept = self.delta_logp(q, q0)
         q_new, accepted = metrop_select(accept, q, q0)
         self.accepted += accepted
-        self._history.append(q_new)
+        if it > 1 or accepted:
+            self._history.append(q_new)
 
         self.steps_until_tune -= 1
 
